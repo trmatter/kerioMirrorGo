@@ -1,5 +1,6 @@
-mirror/
-python_example/
+/cmd/server/logs
+/cmd/server/mirror
+/python_example/
 *.exe
 *.log
 .env
