@@ -22,7 +22,7 @@ func DownloadAndUpdateIDS(conn *sql.DB, cfg *config.Config, logger *logrus.Logge
 			logger.Infof("IDSv%s: passing because license key is not configured", version)
 			continue
 		}
-		url := fmt.Sprintf("https://ids-update.kerio.com/update.php?id=%s&version=%s.0&tag=", cfg.LicenseNumber, version)
+		url := fmt.Sprintf(cfg.IDSUrl, cfg.LicenseNumber, version)
 		resp, err := utils.HttpGetWithRetry(url, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, cfg.ProxyURL)
 		if err != nil {
 			logger.Errorf("IDSv%s: request error: %v", version, err)
@@ -74,16 +74,15 @@ func DownloadAndUpdateIDS(conn *sql.DB, cfg *config.Config, logger *logrus.Logge
 		currentVersion := db.GetIDSVersion(conn, version)
 		if currentVersion == 0 {
 			logger.Infof("IDSv%s: can't get current version from DB, continuing", version)
-			continue
 		}
 		if currentVersion >= remoteVersion {
 			logger.Infof("IDSv%s: no new version, current: %d, remote: %d", version, currentVersion, remoteVersion)
 			continue
 		}
 		logger.Infof("IDSv%s: downloading new version: %d", version, remoteVersion)
-		os.MkdirAll("mirror/ids", 0755)
+		os.MkdirAll("mirror", 0755)
 		filename := filepath.Base(downloadLink)
-		destPath := filepath.Join("mirror/ids", filename)
+		destPath := filepath.Join("mirror", filename)
 		if !utils.DownloadFileWithProxy(downloadLink, destPath, cfg.ProxyURL, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, logger) {
 			logger.Errorf("IDSv%s: failed to download main file", version)
 			continue
@@ -96,7 +95,7 @@ func DownloadAndUpdateIDS(conn *sql.DB, cfg *config.Config, logger *logrus.Logge
 				continue
 			}
 		}
-		err = db.UpdateIDSVersion(conn, version, remoteVersion, filename)
+		err = db.UpdateIDSVersion(conn, version, remoteVersion, filename, true, time.Now())
 		if err != nil {
 			logger.Errorf("IDSv%s: failed to update version in DB: %v", version, err)
 			continue
@@ -110,7 +109,7 @@ func DownloadAndUpdateIDS(conn *sql.DB, cfg *config.Config, logger *logrus.Logge
 			continue
 		}
 		for _, oldFile := range oldFiles {
-			oldPath := filepath.Join("mirror/ids", oldFile)
+			oldPath := filepath.Join("mirror", oldFile)
 			if err := os.Remove(oldPath); err != nil {
 				logger.Warnf("IDSv%s: failed to remove old file %s: %v", version, oldFile, err)
 			} else {
