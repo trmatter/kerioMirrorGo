@@ -8,3 +8,4 @@
 *.db
 .cursorignore
 .github/instructions/instaructions.instructions.md
+cmd/server/config.yaml
