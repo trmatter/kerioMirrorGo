@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"kerio-mirror-go/config"
+	"kerio-mirror-go/db"
 
 	"github.com/sirupsen/logrus"
 )
@@ -41,10 +42,16 @@ func MirrorUpdate(cfg *config.Config, logger *logrus.Logger) {
 	// Загрузка баз WebFilter
 	UpdateWebFilterKey(conn, cfg, logger)
 	// Загрузка баз Bitdefender
-	downloadAndStoreBitdefender(conn, "bitdefender", cfg.BitdefenderUrls, "mirror/bitdefender", cfg, logger)
+	downloadAndStoreBitdefender(conn, cfg.BitdefenderUrls, "mirror/bitdefender", cfg, logger)
 
 	duration := time.Since(start)
 	logger.Infof("MirrorUpdate completed in %s", duration)
+
+	// Сохраняем время последнего обновления
+	err = saveLastUpdate(conn)
+	if err != nil {
+		logger.Errorf("Failed to save last update time: %v", err)
+	}
 }
 
 func calcChecksum(path string) string {
@@ -57,8 +64,20 @@ func calcChecksum(path string) string {
 }
 
 func StartScheduler(cfg *config.Config, logger *logrus.Logger) {
-	ticker := time.NewTicker(time.Duration(cfg.ScheduleInterval) * time.Hour)
-	for range ticker.C {
+	for {
+		now := time.Now()
+		target, err := time.ParseInLocation("15:04", cfg.ScheduleTime, now.Location())
+		if err != nil {
+			logger.Errorf("Invalid ScheduleTime format: %v", err)
+			return
+		}
+		targetTime := time.Date(now.Year(), now.Month(), now.Day(), target.Hour(), target.Minute(), 0, 0, now.Location())
+		if now.After(targetTime) {
+			targetTime = targetTime.Add(24 * time.Hour)
+		}
+		dur := targetTime.Sub(now)
+		logger.Infof("Next scheduled update at %s (in %s)", targetTime.Format("2006-01-02 15:04:05"), dur)
+		time.Sleep(dur)
 		MirrorUpdate(cfg, logger)
 	}
 }
@@ -66,4 +85,9 @@ func StartScheduler(cfg *config.Config, logger *logrus.Logger) {
 // contains is a helper for substring search
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || (len(s) > len(substr) && (contains(s[1:], substr) || contains(s[:len(s)-1], substr)))) || (len(s) < len(substr) && false)
+}
+
+// saveLastUpdate сохраняет текущее время в таблицу last_update
+func saveLastUpdate(conn *sql.DB) error {
+	return db.SetLastUpdate(conn, time.Now())
 }
