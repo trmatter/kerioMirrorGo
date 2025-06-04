@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings</title>
+  <link href="/static/bootstrap/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container py-5">
+  <div class="card shadow">
+    <div class="card-body">
+      <h1 class="card-title mb-4">Settings</h1>
+      {{if .Message}}
+      <div class="alert alert-success">{{.Message}}</div>
+      {{end}}
+      <form method="post">
+        <h3>General Settings</h3>
+        <div class="mb-3">
+          <label class="form-label">Schedule Time (HH:MM)</label>
+          <input type="time" class="form-control" name="ScheduleTime" value="{{.Config.ScheduleTime}}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Schedule Interval (hours)</label>
+          <input type="number" class="form-control" name="ScheduleInterval" value="{{.Config.ScheduleInterval}}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Retry Count</label>
+          <input type="number" class="form-control" name="RetryCount" value="{{.Config.RetryCount}}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Retry Delay Seconds</label>
+          <input type="number" class="form-control" name="RetryDelaySeconds" value="{{.Config.RetryDelaySeconds}}">
+        </div>
+
+        <h3 class="mt-4">API Endpoints</h3>
+        <div class="mb-3">
+          <label class="form-label">WebFilter API</label>
+          <input type="text" class="form-control" name="WebFilterApi" value="{{.Config.WebFilterApi}}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Bitdefender URLs (one per line)</label>
+          <textarea class="form-control" name="BitdefenderUrls" rows="4">{{range .Config.BitdefenderUrls}}{{.}}
+{{end}}</textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Proxy URL</label>
+          <input type="text" class="form-control" name="ProxyURL" value="{{.Config.ProxyURL}}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">GeoIP4 URL</label>
+          <input type="text" class="form-control" name="GeoIP4Url" value="{{.Config.GeoIP4Url}}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">GeoIP6 URL</label>
+          <input type="text" class="form-control" name="GeoIP6Url" value="{{.Config.GeoIP6Url}}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">GeoLoc URL</label>
+          <input type="text" class="form-control" name="GeoLocUrl" value="{{.Config.GeoLocUrl}}">
+        </div>
+
+        <h3 class="mt-4">Paths and Licensing</h3>
+        <div class="mb-3">
+          <label class="form-label">Database Path</label>
+          <input type="text" class="form-control" name="DatabasePath" value="{{.Config.DatabasePath}}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Log Path</label>
+          <input type="text" class="form-control" name="LogPath" value="{{.Config.LogPath}}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">License Number</label>
+          <input type="text" class="form-control" name="LicenseNumber" value="{{.Config.LicenseNumber}}">
+        </div>
+
+        <button type="submit" class="btn btn-success mt-4">Сохранить</button>
+        <a href="/" class="btn btn-secondary ms-2 mt-4">Назад</a>
+      </form>
+    </div>
+  </div>
+</div>
+</body>
+</html>
