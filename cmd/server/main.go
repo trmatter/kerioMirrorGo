@@ -26,7 +26,7 @@ func main() {
 	}
 
 	// Init logger
-	logger := logging.NewLogger(cfg.LogPath)
+	logger := logging.NewLogger(cfg.LogPath, cfg.LogLevel)
 	logger.Info("Starting kerio-mirror-go")
 
 	// Init DB

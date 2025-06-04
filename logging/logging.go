@@ -4,11 +4,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 )
 
-func NewLogger(logPath string) *logrus.Logger {
+func NewLogger(logPath string, logLevel string) *logrus.Logger {
 	logger := logrus.New()
 
 	// Create logs directory if it doesn't exist
@@ -28,5 +29,25 @@ func NewLogger(logPath string) *logrus.Logger {
 		logger.SetOutput(io.MultiWriter(file, os.Stdout))
 	}
 	logger.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
+
+	// loglevel to lowercase
+	logLevel = strings.ToLower(logLevel)
+	switch logLevel {
+	case "debug":
+		logger.SetLevel(logrus.DebugLevel)
+	case "info":
+		logger.SetLevel(logrus.InfoLevel)
+	case "warn":
+		logger.SetLevel(logrus.WarnLevel)
+	case "error":
+		logger.SetLevel(logrus.ErrorLevel)
+	case "fatal":
+		logger.SetLevel(logrus.FatalLevel)
+	case "panic":
+		logger.SetLevel(logrus.PanicLevel)
+	default:
+		logger.SetLevel(logrus.InfoLevel)
+	}
+
 	return logger
 }
