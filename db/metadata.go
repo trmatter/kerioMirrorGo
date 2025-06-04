@@ -37,8 +37,14 @@ func GetIDSVersion(db *sql.DB, version string) int {
 	return v
 }
 
-// UpdateIDSVersion updates version and filename for IDS type in DB
-func UpdateIDSVersion(db *sql.DB, version string, newVersion int, filename string) error {
+// UpdateIDSVersion обновляет версию, имя файла и статус обновления для IDS
+func UpdateIDSVersion(db *sql.DB, version string, newVersion int, filename string, success bool, lastSuccessAt time.Time) error {
+	_, err := db.Exec(`INSERT OR REPLACE INTO ids_versions(version_id, version, filename, last_update_success, last_success_update_at) VALUES(?,?,?,?,?)`, "ids"+version, newVersion, filename, success, lastSuccessAt)
+	return err
+}
+
+// UpdateIDSVersionLegacy оставлена для обратной совместимости
+func UpdateIDSVersionLegacy(db *sql.DB, version string, newVersion int, filename string) error {
 	_, err := db.Exec(`INSERT OR REPLACE INTO ids_versions(version_id, version, filename) VALUES(?,?,?)`, "ids"+version, newVersion, filename)
 	return err
 }
@@ -72,8 +78,14 @@ func GetBitdefenderVersion(db *sql.DB) int {
 	return v
 }
 
-// UpdateBitdefenderVersion updates version for Bitdefender in DB
-func UpdateBitdefenderVersion(db *sql.DB, newVersion int) error {
+// UpdateBitdefenderVersion обновляет версию и статус обновления для Bitdefender
+func UpdateBitdefenderVersion(db *sql.DB, newVersion int, success bool, lastSuccessAt time.Time) error {
+	_, err := db.Exec(`INSERT OR REPLACE INTO bitdefender(id, version, last_update_success, last_success_update_at) VALUES(1, ?, ?, ?)`, newVersion, success, lastSuccessAt)
+	return err
+}
+
+// UpdateBitdefenderVersionLegacy оставлена для обратной совместимости
+func UpdateBitdefenderVersionLegacy(db *sql.DB, newVersion int) error {
 	_, err := db.Exec(`INSERT OR REPLACE INTO bitdefender(id, version) VALUES(1, ?)`, newVersion)
 	return err
 }
@@ -94,4 +106,54 @@ func GetOldIDSFiles(db *sql.DB, version string) ([]string, error) {
 		files = append(files, filename)
 	}
 	return files, nil
+}
+
+// SetLastUpdate сохраняет текущее время как время последнего обновления
+func SetLastUpdate(db *sql.DB, t time.Time) error {
+	_, err := db.Exec(`INSERT OR REPLACE INTO last_update (id, updated_at) VALUES (1, ?)`, t)
+	return err
+}
+
+// GetLastUpdate возвращает время последнего обновления
+func GetLastUpdate(db *sql.DB) (string, error) {
+	var updatedAt sql.NullString
+	err := db.QueryRow(`SELECT updated_at FROM last_update WHERE id = 1`).Scan(&updatedAt)
+	if err != nil || !updatedAt.Valid {
+		return "-", err
+	}
+	return updatedAt.String, nil
+}
+
+// GetIDSUpdateStatus возвращает статус последнего обновления и дату последнего удачного обновления для IDS
+func GetIDSUpdateStatus(db *sql.DB, version string) (bool, string, error) {
+	var success bool
+	var lastSuccessAt sql.NullString
+	err := db.QueryRow(`SELECT last_update_success, last_success_update_at FROM ids_versions WHERE version_id = ?`, "ids"+version).Scan(&success, &lastSuccessAt)
+	if err != nil {
+		return false, "", err
+	}
+	return success, lastSuccessAt.String, nil
+}
+
+// UpdateIDSUpdateStatus обновляет статус последнего обновления IDS
+func UpdateIDSUpdateStatus(db *sql.DB, version string, success bool, lastSuccessAt time.Time) error {
+	_, err := db.Exec(`UPDATE ids_versions SET last_update_success = ?, last_success_update_at = ? WHERE version_id = ?`, success, lastSuccessAt, "ids"+version)
+	return err
+}
+
+// GetBitdefenderUpdateStatus возвращает статус последнего обновления и дату последнего удачного обновления для Bitdefender
+func GetBitdefenderUpdateStatus(db *sql.DB) (bool, string, error) {
+	var success bool
+	var lastSuccessAt sql.NullString
+	err := db.QueryRow(`SELECT last_update_success, last_success_update_at FROM bitdefender WHERE id = 1`).Scan(&success, &lastSuccessAt)
+	if err != nil {
+		return false, "", err
+	}
+	return success, lastSuccessAt.String, nil
+}
+
+// UpdateBitdefenderUpdateStatus обновляет статус последнего обновления Bitdefender
+func UpdateBitdefenderUpdateStatus(db *sql.DB, success bool, lastSuccessAt time.Time) error {
+	_, err := db.Exec(`UPDATE bitdefender SET last_update_success = ?, last_success_update_at = ? WHERE id = 1`, success, lastSuccessAt)
+	return err
 }
