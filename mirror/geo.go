@@ -191,7 +191,7 @@ func UpdateGeoIPDatabases(conn *sql.DB, cfg *config.Config, logger *logrus.Logge
 			fileVersion := time.Now().Format("20060102")
 			version := utils.AtoiSafe(fileVersion)
 			filename := filepath.Base(outputPath)
-			if updateErr := db.UpdateIDSVersion(conn, "4", version, filename); updateErr != nil {
+			if updateErr := db.UpdateIDSVersion(conn, "4", version, filename, true, time.Now()); updateErr != nil {
 				logger.Errorf("Failed to update GeoIP version in DB: %v", updateErr)
 			} else {
 				logger.Infof("GeoIP update complete, version 4.%s", fileVersion)
