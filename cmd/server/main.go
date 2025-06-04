@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"sync"
+	"embed"
 
 	"kerio-mirror-go/config"
 	"kerio-mirror-go/db"
@@ -14,9 +15,12 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+//go:embed templates static favicon.ico
+var embeddedFiles embed.FS
+
 func main() {
 	// Parse config path
-	cfgPath := flag.String("config", ".env", "Path to config file")
+	cfgPath := flag.String("config", "config.yaml", "Path to config file")
 	flag.Parse()
 
 	// Load config
@@ -39,7 +43,16 @@ func main() {
 
 	// Setup HTTP server
 	e := echo.New()
-	handlers.RegisterRoutes(e, cfg, logger)
+	// Inject config and logger into context for all handlers
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Set("config", cfg)
+			c.Set("logger", logger)
+			c.Set("configPath", *cfgPath)
+			return next(c)
+		}
+	})
+	handlers.RegisterRoutes(e, cfg, logger, embeddedFiles)
 
 	// Start servers in goroutines
 	var wg sync.WaitGroup
