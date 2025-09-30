@@ -8,21 +8,29 @@ import (
 )
 
 type Config struct {
-	ScheduleInterval  int
-	ScheduleTime      string // время запуска в формате HH:MM
-	IDSUrl            string
-	WebFilterApi      string
-	BitdefenderUrls   []string
-	DatabasePath      string
-	LogPath           string
-	RetryCount        int
-	RetryDelaySeconds int
-	ProxyURL          string // URL прокси-сервера, если требуется
-	GeoIP4Url         string
-	GeoIP6Url         string
-	GeoLocUrl         string
-	LicenseNumber     string
-	LogLevel          string // уровень логирования: debug, info, warn, error
+	ScheduleTime       string // время запуска в формате HH:MM
+	IDSUrl             string
+	WebFilterApi       string
+	BitdefenderUrls    []string
+	EnableBitdefender  bool // Включить обновление Bitdefender
+	DatabasePath       string
+	LogPath            string
+	RetryCount         int
+	RetryDelaySeconds  int
+	ProxyURL           string // URL прокси-сервера, если требуется
+	GeoIP4Url          string
+	GeoIP6Url          string
+	GeoLocUrl          string
+	LicenseNumber      string
+	LogLevel           string   // уровень логирования: debug, info, warn, error
+	CustomDownloadUrls []string // Пользовательские URL для скачивания
+	EnableIDS1              bool // Включить обновление IDS1
+	EnableIDS2              bool // Включить обновление IDS2
+	EnableIDS3              bool // Включить обновление IDS3
+	EnableIDS4              bool // Включить обновление IDS4
+	EnableIDS5              bool // Включить обновление IDS5
+	BitdefenderProxyMode    bool // Режим прокси для Bitdefender (запросы передаются на сервер и кэшируются)
+	BitdefenderProxyBaseURL string // Базовый URL для прокси Bitdefender
 }
 
 func Load(path string) (*Config, error) {
@@ -37,7 +45,6 @@ func Load(path string) (*Config, error) {
 	viper.SetDefault("SCHEDULE_TIME", "03:00")
 	viper.SetDefault("IDS_URL", "https://ids-update.kerio.com/update.php?id=%s&version=%s.0&tag=")
 	viper.SetDefault("WEBFILTER_API", "https://updates.kerio.com/webfilter/key")
-	viper.SetDefault("BITDEFENDER_URLS", []string{""})
 	viper.SetDefault("DATABASE_PATH", "./mirror.db")
 	viper.SetDefault("LOG_PATH", "./logs/mirror.log")
 	viper.SetDefault("RETRY_COUNT", 3)
@@ -48,6 +55,16 @@ func Load(path string) (*Config, error) {
 	viper.SetDefault("GEOLOC_URL", "https://raw.githubusercontent.com/wyot1/GeoLite2-Unwalled/downloads/COUNTRY/CSV/GeoLite2-Country-Locations-en.csv")
 	viper.SetDefault("LICENSE_NUMBER", "")
 	viper.SetDefault("LOG_LEVEL", "info")
+	viper.SetDefault("CUSTOM_DOWNLOAD_URLS", []string{"http://download.kerio.com/control-update/config/v1/snort.tpl",
+		"http://download.kerio.com/control-update/config/v1/snort.tpl.md5"})
+	viper.SetDefault("ENABLE_BITDEFENDER", true)
+	viper.SetDefault("ENABLE_IDS1", true)
+	viper.SetDefault("ENABLE_IDS2", true)
+	viper.SetDefault("ENABLE_IDS3", true)
+	viper.SetDefault("ENABLE_IDS4", true)
+	viper.SetDefault("ENABLE_IDS5", true)
+	viper.SetDefault("BITDEFENDER_PROXY_MODE", false)
+	viper.SetDefault("BITDEFENDER_PROXY_BASE_URL", "https://upgrade.bitdefender.com")
 
 	viper.AutomaticEnv()
 	if err := viper.ReadInConfig(); err != nil {
@@ -55,20 +72,28 @@ func Load(path string) (*Config, error) {
 	}
 
 	return &Config{
-		ScheduleTime:      viper.GetString("SCHEDULE_TIME"),
-		IDSUrl:            viper.GetString("IDS_URL"),
-		WebFilterApi:      viper.GetString("WEBFILTER_API"),
-		BitdefenderUrls:   viper.GetStringSlice("BITDEFENDER_URLS"),
-		DatabasePath:      viper.GetString("DATABASE_PATH"),
-		LogPath:           viper.GetString("LOG_PATH"),
-		RetryCount:        viper.GetInt("RETRY_COUNT"),
-		RetryDelaySeconds: viper.GetInt("RETRY_DELAY_SECONDS"),
-		ProxyURL:          viper.GetString("PROXY_URL"),
-		GeoIP4Url:         viper.GetString("GEOIP4_URL"),
-		GeoIP6Url:         viper.GetString("GEOIP6_URL"),
-		GeoLocUrl:         viper.GetString("GEOLOC_URL"),
-		LicenseNumber:     viper.GetString("LICENSE_NUMBER"),
-		LogLevel:          viper.GetString("LOG_LEVEL"),
+		ScheduleTime:       viper.GetString("SCHEDULE_TIME"),
+		IDSUrl:             viper.GetString("IDS_URL"),
+		WebFilterApi:       viper.GetString("WEBFILTER_API"),
+		EnableBitdefender:  viper.GetBool("ENABLE_BITDEFENDER"),
+		DatabasePath:       viper.GetString("DATABASE_PATH"),
+		LogPath:            viper.GetString("LOG_PATH"),
+		RetryCount:         viper.GetInt("RETRY_COUNT"),
+		RetryDelaySeconds:  viper.GetInt("RETRY_DELAY_SECONDS"),
+		ProxyURL:           viper.GetString("PROXY_URL"),
+		GeoIP4Url:          viper.GetString("GEOIP4_URL"),
+		GeoIP6Url:          viper.GetString("GEOIP6_URL"),
+		GeoLocUrl:          viper.GetString("GEOLOC_URL"),
+		LicenseNumber:      viper.GetString("LICENSE_NUMBER"),
+		LogLevel:           viper.GetString("LOG_LEVEL"),
+		CustomDownloadUrls: viper.GetStringSlice("CUSTOM_DOWNLOAD_URLS"),
+		EnableIDS1:              viper.GetBool("ENABLE_IDS1"),
+		EnableIDS2:              viper.GetBool("ENABLE_IDS2"),
+		EnableIDS3:              viper.GetBool("ENABLE_IDS3"),
+		EnableIDS4:              viper.GetBool("ENABLE_IDS4"),
+		EnableIDS5:              viper.GetBool("ENABLE_IDS5"),
+		BitdefenderProxyMode:    viper.GetBool("BITDEFENDER_PROXY_MODE"),
+		BitdefenderProxyBaseURL: viper.GetString("BITDEFENDER_PROXY_BASE_URL"),
 	}, nil
 }
 
@@ -77,7 +102,6 @@ func Save(cfg *Config, path string) error {
 	viper.Set("SCHEDULE_TIME", cfg.ScheduleTime)
 	viper.Set("IDS_URL", cfg.IDSUrl)
 	viper.Set("WEBFILTER_API", cfg.WebFilterApi)
-	viper.Set("BITDEFENDER_URLS", cfg.BitdefenderUrls)
 	viper.Set("DATABASE_PATH", cfg.DatabasePath)
 	viper.Set("LOG_PATH", cfg.LogPath)
 	viper.Set("RETRY_COUNT", cfg.RetryCount)
@@ -88,6 +112,15 @@ func Save(cfg *Config, path string) error {
 	viper.Set("GEOLOC_URL", cfg.GeoLocUrl)
 	viper.Set("LICENSE_NUMBER", cfg.LicenseNumber)
 	viper.Set("LOG_LEVEL", cfg.LogLevel)
+	viper.Set("CUSTOM_DOWNLOAD_URLS", cfg.CustomDownloadUrls)
+	viper.Set("ENABLE_BITDEFENDER", cfg.EnableBitdefender)
+	viper.Set("ENABLE_IDS1", cfg.EnableIDS1)
+	viper.Set("ENABLE_IDS2", cfg.EnableIDS2)
+	viper.Set("ENABLE_IDS3", cfg.EnableIDS3)
+	viper.Set("ENABLE_IDS4", cfg.EnableIDS4)
+	viper.Set("ENABLE_IDS5", cfg.EnableIDS5)
+	viper.Set("BITDEFENDER_PROXY_MODE", cfg.BitdefenderProxyMode)
+	viper.Set("BITDEFENDER_PROXY_BASE_URL", cfg.BitdefenderProxyBaseURL)
 
 	// Set config type explicitly if file extension is missing or not supported for writing
 	ext := filepath.Ext(path)

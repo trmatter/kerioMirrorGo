@@ -16,8 +16,30 @@ import (
 
 // DownloadAndUpdateIDS implements the python logic for IDS update discovery and download
 func DownloadAndUpdateIDS(conn *sql.DB, cfg *config.Config, logger *logrus.Logger) {
+	if cfg.IDSUrl == "" {
+		logger.Warn("IDS URL is not configured")
+		return
+	}
 	idsVersions := []string{"1", "2", "3", "4", "5"}
 	for _, version := range idsVersions {
+		// Новая проверка на включение IDS
+		enabled := false
+		switch version {
+		case "1":
+			enabled = cfg.EnableIDS1
+		case "2":
+			enabled = cfg.EnableIDS2
+		case "3":
+			enabled = cfg.EnableIDS3
+		case "4":
+			enabled = cfg.EnableIDS4
+		case "5":
+			enabled = cfg.EnableIDS5
+		}
+		if !enabled {
+			logger.Infof("IDSv%s: update is disabled by config", version)
+			continue
+		}
 		if cfg.LicenseNumber == "" {
 			logger.Infof("IDSv%s: passing because license key is not configured", version)
 			continue

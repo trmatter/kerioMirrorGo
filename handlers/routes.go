@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bufio"
 	"fmt"
 	"net/http"
 	"os"
@@ -36,7 +37,7 @@ type DashboardStatus struct {
 }
 
 func getDashboardStatus(cfg *config.Config) (*DashboardStatus, error) {
-	conn, err := sql.Open("sqlite3", cfg.DatabasePath)
+	conn, err := sql.Open("sqlite", cfg.DatabasePath)
 	if err != nil {
 		return nil, err
 	}
@@ -78,6 +79,7 @@ func RegisterRoutes(e *echo.Echo, cfg *config.Config, logger *logrus.Logger, emb
 	// Logs
 	e.GET("/logs", serveFileHandler(cfg.LogPath, embeddedFiles))
 	e.GET("/logs/raw", serveRawLogHandler(cfg.LogPath))
+	e.GET("/logs/full_raw", serveFullRawLogHandler(cfg.LogPath))
 	// Start manual update mirror files
 	e.GET("/update", updateHandler(cfg, logger))
 	// Раздать файлы обновлений
@@ -95,8 +97,7 @@ func RegisterRoutes(e *echo.Echo, cfg *config.Config, logger *logrus.Logger, emb
 	// Static files from embedded filesystem
 	e.GET("/static/*", echo.WrapHandler(http.FileServer(http.FS(embeddedFiles)))) // Serve embedded static files
 	// other routes
-	e.GET("/*", bitdefenderOrUnknownHandler(cfg, logger))
-
+	e.GET("/*", customFilesHandlerOrFallback(cfg, logger))
 }
 
 func dashboardHandler(embeddedFiles embed.FS) echo.HandlerFunc {
@@ -123,7 +124,6 @@ func settingsPageHandler(cfg *config.Config, embeddedFiles embed.FS) echo.Handle
 		logger.Infof("Web access: %s %s from %s", c.Request().Method, c.Request().URL.Path, c.RealIP())
 		if c.Request().Method == http.MethodPost {
 			cfg.ScheduleTime = c.FormValue("ScheduleTime")
-			cfg.ScheduleInterval, _ = strconv.Atoi(c.FormValue("ScheduleInterval"))
 			cfg.DatabasePath = c.FormValue("DatabasePath")
 			cfg.LogPath = c.FormValue("LogPath")
 			cfg.ProxyURL = c.FormValue("ProxyURL")
@@ -134,8 +134,7 @@ func settingsPageHandler(cfg *config.Config, embeddedFiles embed.FS) echo.Handle
 			cfg.GeoLocUrl = c.FormValue("GeoLocUrl")
 			cfg.RetryCount, _ = strconv.Atoi(c.FormValue("RetryCount"))
 			cfg.RetryDelaySeconds, _ = strconv.Atoi(c.FormValue("RetryDelaySeconds"))
-
-			cfg.IDSUrl = c.FormValue("IDSUrls")
+			cfg.IDSUrl = c.FormValue("IDSUrl")
 			bitdefUrlsRaw := c.FormValue("BitdefenderUrls")
 			cfg.BitdefenderUrls = nil
 			for _, line := range strings.Split(bitdefUrlsRaw, "\n") {
@@ -144,6 +143,22 @@ func settingsPageHandler(cfg *config.Config, embeddedFiles embed.FS) echo.Handle
 					cfg.BitdefenderUrls = append(cfg.BitdefenderUrls, line)
 				}
 			}
+			cfg.EnableBitdefender = c.FormValue("EnableBitdefender") == "true"
+			customUrlsRaw := c.FormValue("CustomDownloadUrls")
+			cfg.CustomDownloadUrls = nil
+			for _, line := range strings.Split(customUrlsRaw, "\n") {
+				line = strings.TrimSpace(line)
+				if line != "" {
+					cfg.CustomDownloadUrls = append(cfg.CustomDownloadUrls, line)
+				}
+			}
+			cfg.EnableIDS1 = c.FormValue("EnableIDS1") == "true"
+			cfg.EnableIDS2 = c.FormValue("EnableIDS2") == "true"
+			cfg.EnableIDS3 = c.FormValue("EnableIDS3") == "true"
+			cfg.EnableIDS4 = c.FormValue("EnableIDS4") == "true"
+			cfg.EnableIDS5 = c.FormValue("EnableIDS5") == "true"
+			cfg.BitdefenderProxyMode = c.FormValue("BitdefenderProxyMode") == "true"
+			cfg.BitdefenderProxyBaseURL = c.FormValue("BitdefenderProxyBaseURL")
 			msg := "Настройки успешно обновлены!"
 
 			// Get config path from context
@@ -203,6 +218,39 @@ func serveFileHandler(path string, embeddedFiles embed.FS) echo.HandlerFunc {
 
 func serveRawLogHandler(path string) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		const maxLogLines = 1000
+		file, err := os.Open(path)
+		if err != nil {
+			return c.String(http.StatusNotFound, "File not found")
+		}
+		defer file.Close()
+
+		// Читаем все строки (или только последние 1000)
+		var lines []string
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			lines = append(lines, scanner.Text())
+		}
+		if err := scanner.Err(); err != nil {
+			return c.String(http.StatusInternalServerError, "Failed to read log file")
+		}
+
+		truncated := false
+		if len(lines) > maxLogLines {
+			truncated = true
+			lines = lines[len(lines)-maxLogLines:]
+		}
+
+		c.Response().Header().Set("Content-Type", "text/plain; charset=utf-8")
+		if truncated {
+			return c.String(http.StatusOK, "[ВНИМАНИЕ] Лог слишком большой, показаны только последние 1000 строк.\n\n"+strings.Join(lines, "\n"))
+		}
+		return c.String(http.StatusOK, strings.Join(lines, "\n"))
+	}
+}
+
+func serveFullRawLogHandler(path string) echo.HandlerFunc {
+	return func(c echo.Context) error {
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return c.String(http.StatusNotFound, "File not found")
@@ -246,13 +294,17 @@ func updateKerioHandler(cfg *config.Config, logger *logrus.Logger) echo.HandlerF
 		if majorVersion == 0 {
 			return c.String(http.StatusOK, "0:0.0")
 		} else if majorVersion == 9 || majorVersion == 10 {
+			// Если включен режим прокси Bitdefender, перенаправляем клиента на наш сервер
+			if cfg.BitdefenderProxyMode {
+				return c.String(http.StatusOK, "THDdir=http://"+c.Request().Host+"/")
+			}
 			return c.String(http.StatusOK, "THDdir=https://bdupdate.kerio.com/../")
 		}
 
 		// Regular versions (1-5)
 		if majorVersion >= 1 && majorVersion <= 5 {
 			// Get current version from DB
-			conn, err := sql.Open("sqlite3", cfg.DatabasePath)
+			conn, err := sql.Open("sqlite", cfg.DatabasePath)
 			if err != nil {
 				logger.Errorf("Failed to open database: %v", err)
 				return c.String(http.StatusInternalServerError, "500 Internal Server Error")
@@ -293,7 +345,7 @@ func webFilterKeyHandler(cfg *config.Config) echo.HandlerFunc {
 		if cfg.LicenseNumber == "" {
 			return c.String(http.StatusNotFound, "404 Not found")
 		}
-		conn, err := sql.Open("sqlite3", cfg.DatabasePath)
+		conn, err := sql.Open("sqlite", cfg.DatabasePath)
 		if err != nil {
 			return c.String(http.StatusInternalServerError, "500 Internal Server Error")
 		}
@@ -310,11 +362,17 @@ func webFilterKeyHandler(cfg *config.Config) echo.HandlerFunc {
 	}
 }
 
-// Универсальный обработчик: если host Bitdefender — раздаём базу, иначе unknown
+// Универсальный обработчик: если host Bitdefender — раздаём базу или работаем как прокси, иначе unknown
 func bitdefenderOrUnknownHandler(cfg *config.Config, logger *logrus.Logger) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		host := c.Request().Host
 		if strings.Contains(host, "bdupdate.kerio.com") || strings.Contains(host, "bda-update.kerio.com") {
+			// Если включен режим прокси, используем прокси-обработчик
+			if cfg.BitdefenderProxyMode {
+				return mirror.BitdefenderProxyHandler(cfg, logger)(c)
+			}
+
+			// Иначе работаем в обычном режиме - отдаём только локальные файлы
 			filePath := c.Request().URL.Path
 			if filePath == "" || filePath == "/" {
 				return c.String(http.StatusBadRequest, "400 Bad Request")
@@ -376,5 +434,38 @@ func controlUpdateHandler(logger *logrus.Logger) echo.HandlerFunc {
 		// Serve the file
 		logger.Infof("Serving file from update_files: %s", localPath)
 		return c.File(localPath)
+	}
+}
+
+// Handler for serving files from the mirror/custom directory or fallback to bitdefender/unknown
+func customFilesHandlerOrFallback(cfg *config.Config, logger *logrus.Logger) echo.HandlerFunc {
+	fallback := bitdefenderOrUnknownHandler(cfg, logger)
+	return func(c echo.Context) error {
+		logger.Infof("Web access: %s %s from %s", c.Request().Method, c.Request().URL.Path, c.RealIP())
+		urlPath := c.Request().URL.Path
+		if urlPath == "" || urlPath == "/" {
+			return fallback(c)
+		}
+		localPath := filepath.Join("mirror/custom", filepath.Clean(urlPath))
+		absBase, err := filepath.Abs("mirror/custom")
+		if err != nil {
+			logger.Errorf("Custom files handler: failed to get absolute path for custom dir: %v", err)
+			return c.String(http.StatusInternalServerError, "500 Internal Server Error")
+		}
+		absFile, err := filepath.Abs(localPath)
+		if err != nil {
+			logger.Errorf("Custom files handler: failed to get absolute path for requested file %s: %v", localPath, err)
+			return c.String(http.StatusInternalServerError, "500 Internal Server Error")
+		}
+		if !strings.HasPrefix(absFile, absBase) {
+			logger.Warnf("Custom files handler: path traversal attempt: %s", urlPath)
+			return c.String(http.StatusForbidden, "403 Forbidden")
+		}
+		if _, err := os.Stat(localPath); err == nil {
+			logger.Infof("Serving custom file: %s", localPath)
+			return c.File(localPath)
+		}
+		// Если файл не найден — fallback
+		return fallback(c)
 	}
 }

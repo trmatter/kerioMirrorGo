@@ -7,6 +7,22 @@ import (
 	"time"
 )
 
+// CreateHTTPClient создаёт HTTP клиент с поддержкой прокси
+func CreateHTTPClient(proxyURL string) (*http.Client, error) {
+	transport := &http.Transport{}
+	if proxyURL != "" {
+		proxyParsed, err := url.Parse(proxyURL)
+		if err != nil {
+			return nil, err
+		}
+		transport.Proxy = http.ProxyURL(proxyParsed)
+	}
+	return &http.Client{
+		Timeout:   60 * time.Second,
+		Transport: transport,
+	}, nil
+}
+
 // HttpGetWithRetry performs GET with retries, поддерживает прокси
 func HttpGetWithRetry(urlStr string, retries int, delay time.Duration, proxyURL string) (*http.Response, error) {
 	transport := &http.Transport{}

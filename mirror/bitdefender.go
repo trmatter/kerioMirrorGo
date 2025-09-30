@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -18,52 +17,17 @@ import (
 
 // downloadAndStoreBitdefender handles Bitdefender update with backup/rollback logic
 func downloadAndStoreBitdefender(conn *sql.DB, urls []string, destDir string, cfg *config.Config, logger *logrus.Logger) {
-	// Создаем временную папку для загрузки
+	startBitdefenderHeartbeat(logger)
+
 	tmpDir := destDir + "_tmp"
-	os.RemoveAll(tmpDir)                    // очищаем если осталась от прошлого раза
-	defer func() { os.RemoveAll(tmpDir) }() // на случай ошибки
+	os.RemoveAll(tmpDir)
+	defer func() { os.RemoveAll(tmpDir) }()
 
-	// 1. Получаем XML с информацией о версиях
-	const versionUrl = "https://upgrade.bitdefender.com/av64bit/versions.id"
-	resp, err := utils.HttpGetWithRetry(versionUrl, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, cfg.ProxyURL)
+	newVersion, info, err := fetchAndParseBitdefenderVersion(tmpDir, cfg, logger)
 	if err != nil {
-		logger.Errorf("bitdefender: failed to fetch versions.id: %v", err)
+		logger.Errorf("bitdefender: %v", err)
 		return
 	}
-	defer resp.Body.Close()
-
-	// Сохраняем versions.id с сохранением структуры директорий
-	urlPath := "/av64bit/versions.id"
-	if len(urlPath) > 0 && urlPath[0] == '/' {
-		urlPath = urlPath[1:]
-	}
-	versionsPath := filepath.Join(tmpDir, urlPath)
-	os.MkdirAll(filepath.Dir(versionsPath), 0755)
-	if err := utils.SaveResponseToFile(resp.Body, versionsPath); err != nil {
-		logger.Errorf("bitdefender: failed to save versions.id: %v", err)
-		return
-	}
-	logger.Infof("Stored bitdefender -> %s", urlPath)
-
-	// Reopen the file for XML parsing
-	versionsFile, err := os.Open(versionsPath)
-	if err != nil {
-		logger.Errorf("bitdefender: failed to reopen versions.id: %v", err)
-		return
-	}
-	// decode and close immediately after use
-	var info Info
-	decodeErr := utils.DecodeXML(versionsFile, &info)
-	closeErr := versionsFile.Close()
-	if decodeErr != nil {
-		logger.Errorf("bitdefender: failed to parse XML: %v", decodeErr)
-		return
-	}
-	if closeErr != nil {
-		logger.Errorf("bitdefender: failed to close versions.id: %v", closeErr)
-		return
-	}
-	newVersion := utils.AtoiSafe(info.All.ID.Value)
 	currentVersion := db.GetBitdefenderVersion(conn)
 	if currentVersion >= newVersion {
 		logger.Infof("bitdefender: no new version, current: %d, remote: %d", currentVersion, newVersion)
@@ -71,73 +35,116 @@ func downloadAndStoreBitdefender(conn *sql.DB, urls []string, destDir string, cf
 	}
 	logger.Infof("bitdefender: new version detected: %d", newVersion)
 
-	// скачиваем файлы versions.dat
-	versionsDatUrl := "https://upgrade.bitdefender.com/av64bit_" + strconv.Itoa(newVersion) + "/versions.dat"
-	urlPath = "av64bit_" + strconv.Itoa(newVersion) + "/versions.dat"
-	destPath := filepath.Join(tmpDir, urlPath)
-	os.MkdirAll(filepath.Dir(destPath), 0755)
-	respDat, err := utils.HttpGetWithRetry(versionsDatUrl, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, cfg.ProxyURL)
+	downloadBitdefenderMetaFiles(tmpDir, newVersion, cfg, logger)
+	handleThinSdkFiles(tmpDir, cfg, logger)
+	downloadV3Archives(tmpDir, info, cfg, logger)
+	dat, err := extractAndParseDatJSON(tmpDir, info, logger)
 	if err != nil {
-		logger.Errorf("bitdefender: failed to fetch versions.dat: %v", err)
+		logger.Errorf("bitdefender: %v", err)
+		return
+	}
+	downloadDatFiles(tmpDir, newVersion, dat, cfg, logger)
+
+	if !replaceBitdefenderDirs(destDir, tmpDir, logger) {
+		return
+	}
+
+	err = db.UpdateBitdefenderVersion(conn, newVersion, true, time.Now())
+	if err != nil {
+		logger.Errorf("bitdefender: failed to update version: %v", err)
+		return
 	} else {
-		if err := utils.SaveResponseToFile(respDat.Body, destPath); err != nil {
-			logger.Errorf("bitdefender: failed to save versions.dat: %v", err)
+		logger.Infof("bitdefender: update complete, version %d", newVersion)
+	}
+	logger.Info(urls)
+}
+
+// Heartbeat goroutine
+func startBitdefenderHeartbeat(logger *logrus.Logger) {
+	done := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				logger.Infof("bitdefender: update in progress...")
+			case <-done:
+				return
+			}
+		}
+	}()
+	defer close(done)
+}
+
+func fetchAndParseBitdefenderVersion(tmpDir string, cfg *config.Config, logger *logrus.Logger) (int, Info, error) {
+	const versionUrl = "https://upgrade.bitdefender.com/av64bit/versions.id"
+	resp, err := utils.HttpGetWithRetry(versionUrl, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, cfg.ProxyURL)
+	if err != nil {
+		return 0, Info{}, fmt.Errorf("failed to fetch versions.id: %v", err)
+	}
+	defer resp.Body.Close()
+	urlPath := "av64bit/versions.id"
+	versionsPath := filepath.Join(tmpDir, urlPath)
+	os.MkdirAll(filepath.Dir(versionsPath), 0755)
+	if err := utils.SaveResponseToFile(resp.Body, versionsPath); err != nil {
+		return 0, Info{}, fmt.Errorf("failed to save versions.id: %v", err)
+	}
+	logger.Infof("Stored bitdefender -> %s", urlPath)
+	versionsFile, err := os.Open(versionsPath)
+	if err != nil {
+		return 0, Info{}, fmt.Errorf("failed to reopen versions.id: %v", err)
+	}
+	var info Info
+	decodeErr := utils.DecodeXML(versionsFile, &info)
+	closeErr := versionsFile.Close()
+	if decodeErr != nil {
+		return 0, Info{}, fmt.Errorf("failed to parse XML: %v", decodeErr)
+	}
+	if closeErr != nil {
+		logger.Errorf("bitdefender: failed to close versions.id: %v", closeErr)
+	}
+	newVersion := utils.AtoiSafe(info.All.ID.Value)
+	return newVersion, info, nil
+}
+
+func downloadBitdefenderMetaFiles(tmpDir string, newVersion int, cfg *config.Config, logger *logrus.Logger) {
+	downloadAndLog := func(urlPath, url string) {
+		destPath := filepath.Join(tmpDir, urlPath)
+		os.MkdirAll(filepath.Dir(destPath), 0755)
+		resp, err := utils.HttpGetWithRetry(url, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, cfg.ProxyURL)
+		if err != nil {
+			logger.Errorf("bitdefender: failed to fetch %s: %v", urlPath, err)
+			return
+		}
+		defer resp.Body.Close()
+		if err := utils.SaveResponseToFile(resp.Body, destPath); err != nil {
+			logger.Errorf("bitdefender: failed to save %s: %v", urlPath, err)
 		} else {
 			logger.Infof("Stored bitdefender -> %s", urlPath)
 		}
 	}
+	downloadAndLog(fmt.Sprintf("av64bit_%d/versions.dat", newVersion), fmt.Sprintf("https://upgrade.bitdefender.com/av64bit_%d/versions.dat", newVersion))
+	downloadAndLog(fmt.Sprintf("av64bit_%d/versions.sig", newVersion), fmt.Sprintf("https://upgrade.bitdefender.com/av64bit_%d/versions.sig", newVersion))
+	downloadAndLog(fmt.Sprintf("av64bit_%d/versions.dat.gz", newVersion), fmt.Sprintf("https://upgrade.bitdefender.com/av64bit_%d/versions.dat.gz", newVersion))
+}
 
-	// скачиваем versions.sig
-	versionsSigUrl := "https://upgrade.bitdefender.com/av64bit_" + strconv.Itoa(newVersion) + "/versions.sig"
-	urlPathSig := "av64bit_" + strconv.Itoa(newVersion) + "/versions.sig"
-	destPathSig := filepath.Join(tmpDir, urlPathSig)
-	os.MkdirAll(filepath.Dir(destPathSig), 0755)
-	respSig, err := utils.HttpGetWithRetry(versionsSigUrl, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, cfg.ProxyURL)
-	if err != nil {
-		logger.Errorf("bitdefender: failed to fetch versions.sig: %v", err)
-	} else {
-		if err := utils.SaveResponseToFile(respSig.Body, destPathSig); err != nil {
-			logger.Errorf("bitdefender: failed to save versions.sig: %v", err)
-		} else {
-			logger.Infof("Stored bitdefender -> %s", urlPathSig)
-		}
-	}
-
-	// скачиваем versions.dat.gz
-	versionsDatGzUrl := "https://upgrade.bitdefender.com/av64bit_" + strconv.Itoa(newVersion) + "/versions.dat.gz"
-	urlPathGz := "av64bit_" + strconv.Itoa(newVersion) + "/versions.dat.gz"
-	destPathGz := filepath.Join(tmpDir, urlPathGz)
-	os.MkdirAll(filepath.Dir(destPathGz), 0755)
-	respDatGz, err := utils.HttpGetWithRetry(versionsDatGzUrl, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, cfg.ProxyURL)
-	if err != nil {
-		logger.Errorf("bitdefender: failed to fetch versions.dat.gz: %v", err)
-	} else {
-		if err := utils.SaveResponseToFile(respDatGz.Body, destPathGz); err != nil {
-			logger.Errorf("bitdefender: failed to save versions.dat.gz: %v", err)
-		} else {
-			logger.Infof("Stored bitdefender -> %s", urlPathGz)
-		}
-	}
-
-	// скачиваем versions.id по пути https://upgrade.bitdefender.com/as-thin-sdk-win-x86_64/versions.id
-	versionsIdUrl := "https://upgrade.bitdefender.com/as-thin-sdk-win-x86_64/versions.id"
-	urlPathId := "as-thin-sdk-win-x86_64/versions.id"
-	destPathId := filepath.Join(tmpDir, urlPathId)
+func handleThinSdkFiles(tmpDir string, cfg *config.Config, logger *logrus.Logger) {
+	idUrl := "https://upgrade.bitdefender.com/as-thin-sdk-win-x86_64/versions.id"
+	idPath := "as-thin-sdk-win-x86_64/versions.id"
+	destPathId := filepath.Join(tmpDir, idPath)
 	os.MkdirAll(filepath.Dir(destPathId), 0755)
-	respId, err := utils.HttpGetWithRetry(versionsIdUrl, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, cfg.ProxyURL)
+	respId, err := utils.HttpGetWithRetry(idUrl, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, cfg.ProxyURL)
 	if err != nil {
 		logger.Errorf("bitdefender: failed to fetch versions.id for as-thin-sdk-win-x86_64: %v", err)
 		return
-	} else {
-		if err := utils.SaveResponseToFile(respId.Body, destPathId); err != nil {
-			logger.Errorf("bitdefender: failed to save versions.id for as-thin-sdk-win-x86_64: %v", err)
-			return
-		} else {
-			logger.Infof("Stored bitdefender for as-thin-sdk-win-x86_64 -> %s", urlPathId)
-		}
 	}
-
-	// смотрим id value в xml versions.id для as-thin-sdk-win-x86_64
+	defer respId.Body.Close()
+	if err := utils.SaveResponseToFile(respId.Body, destPathId); err != nil {
+		logger.Errorf("bitdefender: failed to save versions.id for as-thin-sdk-win-x86_64: %v", err)
+		return
+	}
+	logger.Infof("Stored bitdefender for as-thin-sdk-win-x86_64 -> %s", idPath)
 	asThinSdkVersionsFile, err := os.Open(destPathId)
 	if err != nil {
 		logger.Errorf("bitdefender: failed to open as-thin-sdk-win-x86_64/versions.id: %v", err)
@@ -156,37 +163,25 @@ func downloadAndStoreBitdefender(conn *sql.DB, urls []string, destDir string, cf
 	if thinID == "" {
 		logger.Errorf("bitdefender: no id value found in as-thin-sdk-win-x86_64/versions.id")
 	}
-	// Скачиваем versions.dat по id
-	thinDatUrl := "https://upgrade.bitdefender.com/as-thin-sdk-win-x86_64_" + thinID + "/versions.dat"
-	thinDatPath := filepath.Join(tmpDir, "as-thin-sdk-win-x86_64_"+thinID, "versions.dat")
-	os.MkdirAll(filepath.Dir(thinDatPath), 0755)
-	respThinDat, err := utils.HttpGetWithRetry(thinDatUrl, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, cfg.ProxyURL)
-	if err != nil {
-		logger.Errorf("bitdefender: failed to fetch as-thin-sdk-win-x86_64_[id]/versions.dat: %v", err)
-	}
-	defer respThinDat.Body.Close()
-	if err := utils.SaveResponseToFile(respThinDat.Body, thinDatPath); err != nil {
-		logger.Errorf("bitdefender: failed to save as-thin-sdk-win-x86_64_[id]/versions.dat: %v", err)
-	}
-	logger.Infof("Stored bitdefender -> %s", thinDatPath)
-
-	// Скачиваем versions.dat.gz по id и просто сохраняем
-	thinDatGzUrl := "https://upgrade.bitdefender.com/as-thin-sdk-win-x86_64_" + thinID + "/versions.dat.gz"
-	thinDatGzPath := filepath.Join(tmpDir, "as-thin-sdk-win-x86_64_"+thinID, "versions.dat.gz")
-	os.MkdirAll(filepath.Dir(thinDatGzPath), 0755)
-	respThinDatGz, err := utils.HttpGetWithRetry(thinDatGzUrl, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, cfg.ProxyURL)
-	if err != nil {
-		logger.Errorf("bitdefender: failed to fetch as-thin-sdk-win-x86_64_[id]/versions.dat.gz: %v", err)
-	} else {
-		defer respThinDatGz.Body.Close()
-		if err := utils.SaveResponseToFile(respThinDatGz.Body, thinDatGzPath); err != nil {
-			logger.Errorf("bitdefender: failed to save as-thin-sdk-win-x86_64_[id]/versions.dat.gz: %v", err)
+	// Скачиваем versions.dat и .gz по id
+	for _, ext := range []string{"versions.dat", "versions.dat.gz"} {
+		url := fmt.Sprintf("https://upgrade.bitdefender.com/as-thin-sdk-win-x86_64_%s/%s", thinID, ext)
+		path := filepath.Join(tmpDir, fmt.Sprintf("as-thin-sdk-win-x86_64_%s/%s", thinID, ext))
+		os.MkdirAll(filepath.Dir(path), 0755)
+		resp, err := utils.HttpGetWithRetry(url, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, cfg.ProxyURL)
+		if err != nil {
+			logger.Errorf("bitdefender: failed to fetch as-thin-sdk-win-x86_64_[id]/%s: %v", ext, err)
+			continue
+		}
+		defer resp.Body.Close()
+		if err := utils.SaveResponseToFile(resp.Body, path); err != nil {
+			logger.Errorf("bitdefender: failed to save as-thin-sdk-win-x86_64_[id]/%s: %v", ext, err)
 		} else {
-			logger.Infof("Stored bitdefender -> %s", thinDatGzPath)
+			logger.Infof("Stored bitdefender -> %s", path)
 		}
 	}
-
-	// Читаем versions.dat из as-thin-sdk-win-x86_64_[id] (ожидаем список файлов)
+	// Читаем versions.dat и скачиваем файлы
+	thinDatPath := filepath.Join(tmpDir, fmt.Sprintf("as-thin-sdk-win-x86_64_%s/versions.dat", thinID))
 	thinDatBytes, err := os.ReadFile(thinDatPath)
 	if err != nil {
 		logger.Errorf("bitdefender: failed to read as-thin-sdk-win-x86_64_[id]/versions.dat: %v", err)
@@ -202,18 +197,18 @@ func downloadAndStoreBitdefender(conn *sql.DB, urls []string, destDir string, cf
 			continue
 		}
 		filename := parts[2] + ".gzip"
-		fileUrl := "https://upgrade.bitdefender.com/as-thin-sdk-win-x86_64_" + thinID + "/avx/" + filename
-		fileDest := filepath.Join(tmpDir, "as-thin-sdk-win-x86_64_"+thinID, filename)
+		fileUrl := fmt.Sprintf("https://upgrade.bitdefender.com/as-thin-sdk-win-x86_64_%s/avx/%s", thinID, filename)
+		fileDest := filepath.Join(tmpDir, fmt.Sprintf("as-thin-sdk-win-x86_64_%s/avx/%s", thinID, filename))
 		os.MkdirAll(filepath.Dir(fileDest), 0755)
 		if !utils.DownloadFileWithProxy(fileUrl, fileDest, cfg.ProxyURL, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, logger) {
 			logger.Errorf("bitdefender: failed to download as-thin-sdk-win-x86_64_[id] file %s", fileUrl)
 			continue
 		}
 		logger.Debugf("Stored bitdefender as-thin-sdk-win-x86_64_[id] -> %s", fileDest)
-
 	}
+}
 
-	// 2. Скачиваем архивы id_path, dat_path, sig_path
+func downloadV3Archives(tmpDir string, info Info, cfg *config.Config, logger *logrus.Logger) {
 	archiveUrls := []struct{ path, name string }{
 		{info.V3.IdPath, "id"},
 		{info.V3.DatPath, "dat"},
@@ -232,71 +227,66 @@ func downloadAndStoreBitdefender(conn *sql.DB, urls []string, destDir string, cf
 		}
 		logger.Debugf("bitdefender: downloaded %s archive", arch.name)
 	}
+}
 
-	// 3. Распаковываем dat_path архив и читаем JSON
+func extractAndParseDatJSON(tmpDir string, info Info, logger *logrus.Logger) (BitdefenderDat, error) {
 	datArchive := filepath.Join(tmpDir, filepath.Base(info.V3.DatPath))
 	jsonData, err := utils.ExtractFirstFileFromGzip(datArchive)
 	if err != nil {
-		logger.Errorf("bitdefender: failed to extract dat archive: %v", err)
-		return
-	}
-	type BitdefenderFile struct {
-		LocalPath string `json:"local_path"`
-		URL       string `json:"url"`
-	}
-	type BitdefenderDat struct {
-		Files []BitdefenderFile `json:"files"`
+		return BitdefenderDat{}, fmt.Errorf("failed to extract dat archive: %v", err)
 	}
 	var dat BitdefenderDat
 	if err := utils.DecodeJSON(jsonData, &dat); err != nil {
-		logger.Errorf("bitdefender: failed to parse dat JSON: %v", err)
-		return
+		return BitdefenderDat{}, fmt.Errorf("failed to parse dat JSON: %v", err)
 	}
+	return dat, nil
+}
 
-	// 4. Скачиваем все файлы из dat
-	for _, f := range dat.Files {
+type BitdefenderFile struct {
+	LocalPath string `json:"local_path"`
+	URL       string `json:"url"`
+}
+type BitdefenderDat struct {
+	Files []BitdefenderFile `json:"files"`
+}
+
+func downloadDatFiles(tmpDir string, newVersion int, dat BitdefenderDat, cfg *config.Config, logger *logrus.Logger) {
+	totalFiles := len(dat.Files)
+	for i, f := range dat.Files {
 		if f.URL == "" || f.LocalPath == "" {
 			continue
 		}
-		besesVersion := newVersion
-		gzipUrl := fmt.Sprintf("https://upgrade.bitdefender.com/av64bit_%d/avx/%s.gzip", besesVersion, f.LocalPath)
-		gzipDest := filepath.Join(tmpDir, fmt.Sprintf("av64bit_%d/avx/%s.gzip", besesVersion, f.LocalPath))
+		gzipUrl := fmt.Sprintf("https://upgrade.bitdefender.com/av64bit_%d/avx/%s.gzip", newVersion, f.LocalPath)
+		gzipDest := filepath.Join(tmpDir, fmt.Sprintf("av64bit_%d/avx/%s.gzip", newVersion, f.LocalPath))
 		os.MkdirAll(filepath.Dir(gzipDest), 0755)
 		if !utils.DownloadFileWithProxy(gzipUrl, gzipDest, cfg.ProxyURL, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, logger) {
 			logger.Errorf("bitdefender: failed to download gzip %s", gzipUrl)
 		} else {
 			logger.Debugf("Stored bitdefender gzip -> %s", gzipDest)
 		}
+		if (i+1)%10 == 0 || i == totalFiles-1 {
+			percent := float64(i+1) / float64(totalFiles) * 100
+			logger.Infof("bitdefender: update in progress... %.1f%% (%d/%d)", percent, i+1, totalFiles)
+		}
 	}
+}
 
-	// Если дошли до сюда — все скачано успешно, меняем рабочую папку
+func replaceBitdefenderDirs(destDir, tmpDir string, logger *logrus.Logger) bool {
 	os.RemoveAll(destDir + "_bak")
-	// переименовываем старую рабочую папку в _bak
 	if err := os.Rename(destDir, destDir+"_bak"); err != nil {
 		logger.Errorf("bitdefender: failed to backup old data: %v", err)
 	}
-	// переименовываем временную папку в рабочую
 	if err := os.Rename(tmpDir, destDir); err != nil {
 		logger.Errorf("bitdefender: failed to move new data to working dir: %v", err)
-		// Откат: пытаемся вернуть старую папку
 		if restoreErr := os.Rename(destDir+"_bak", destDir); restoreErr != nil {
 			logger.Errorf("bitdefender: rollback failed, could not restore backup: %v", restoreErr)
 		} else {
 			logger.Warn("bitdefender: rollback successful, old data restored")
 		}
-		return
+		return false
 	}
-	os.RemoveAll(destDir + "_bak") // удаляем бэкап
-
-	err = db.UpdateBitdefenderVersion(conn, newVersion, true, time.Now())
-	if err != nil {
-		logger.Errorf("bitdefender: failed to update version: %v", err)
-		return
-	} else {
-		logger.Infof("bitdefender: update complete, version %d", newVersion)
-	}
-	logger.Info(urls)
-
+	os.RemoveAll(destDir + "_bak")
+	return true
 }
 
 type V3 struct {

@@ -15,10 +15,10 @@ import (
 
 func MirrorUpdate(cfg *config.Config, logger *logrus.Logger) {
 	start := time.Now()
-	logger.Info("MirrorUpdate start")
+	logger.Info("MirrorUpdate started")
 
 	// open DB
-	conn, err := sql.Open("sqlite3", cfg.DatabasePath)
+	conn, err := sql.Open("sqlite", cfg.DatabasePath)
 	if err != nil {
 		logger.Errorf("DB open error: %v", err)
 		return
@@ -42,7 +42,15 @@ func MirrorUpdate(cfg *config.Config, logger *logrus.Logger) {
 	// Загрузка баз WebFilter
 	UpdateWebFilterKey(conn, cfg, logger)
 	// Загрузка баз Bitdefender
-	downloadAndStoreBitdefender(conn, cfg.BitdefenderUrls, "mirror/bitdefender", cfg, logger)
+	if cfg.EnableBitdefender {
+		downloadAndStoreBitdefender(conn, cfg.BitdefenderUrls, "mirror/bitdefender", cfg, logger)
+	} else {
+		logger.Infof("Bitdefender update is disabled by config.")
+	}
+
+	// --- Custom Download URLs ---
+	DownloadCustomFiles(cfg, logger)
+	// --- END Custom Download URLs ---
 
 	duration := time.Since(start)
 	logger.Infof("MirrorUpdate completed in %s", duration)
