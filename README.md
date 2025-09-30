@@ -23,13 +23,53 @@ kerio-mirror-go is a Go application designed to mirror definition files used by 
    go build -o kerio-mirror-go ./cmd/server
    ```
 
+   **Note:** The project uses `modernc.org/sqlite` (pure-Go implementation), so no CGO or GCC is required.
+
 3. Create a configuration file (e.g., `config.yaml`) based on the configuration section below.
 
 4. Run the application:
 
    ```bash
-   ./server
+   ./kerio-mirror-go
    ```
+
+## Testing
+
+The project includes comprehensive test coverage for key components.
+
+### Run all tests:
+```bash
+go test ./...
+```
+
+### Run tests with verbose output:
+```bash
+go test ./... -v
+```
+
+### Run tests with coverage report:
+```bash
+go test ./... -cover
+```
+
+### Generate HTML coverage report:
+```bash
+go test ./... -coverprofile=coverage.out
+go tool cover -html=coverage.out -o coverage.html
+```
+
+### Run benchmarks:
+```bash
+go test ./... -bench=. -benchmem
+```
+
+### Using Makefile (if make is available):
+```bash
+make test              # Run all tests
+make test-coverage     # Run with coverage
+make test-coverage-html # Generate HTML coverage report
+make bench             # Run benchmarks
+```
 
 ## Run as Windows Service with NSSM
 
@@ -89,7 +129,7 @@ webfilter_api: https://updates.kerio.com/webfilter/key
 
 - `github.com/labstack/echo/v4` for the HTTP server.
 - `github.com/sirupsen/logrus` for logging.
-- `github.com/mattn/go-sqlite3` for SQLite database access.
+- `modernc.org/sqlite` for SQLite database access (pure-Go, no CGO required).
 - `github.com/spf13/viper` for configuration management.
 - Other standard Go libraries.
 
