@@ -11,3 +11,11 @@
 cmd/server/config.yaml
 CLAUDE.md
 .claude/
+
+# Test coverage files
+coverage.out
+coverage.html
+
+# Temporary test files
+*_test_*.yaml
+*_test_*.db

@@ -1,0 +1,24 @@
+bitdefender_proxy_base_url: https://bdupdate.kerio.com
+bitdefender_proxy_mode: true
+custom_download_urls:
+    - http://download.kerio.com/control-update/config/v1/snort.tpl
+    - http://download.kerio.com/control-update/config/v1/snort.tpl.md5
+database_path: ./mirror.db
+enable_bitdefender: true
+enable_ids1: true
+enable_ids2: true
+enable_ids3: true
+enable_ids4: true
+enable_ids5: true
+geoip4_url: https://raw.githubusercontent.com/wyot1/GeoLite2-Unwalled/downloads/COUNTRY/CSV/GeoLite2-Country-Blocks-IPv4.csv
+geoip6_url: https://raw.githubusercontent.com/wyot1/GeoLite2-Unwalled/downloads/COUNTRY/CSV/GeoLite2-Country-Blocks-IPv6.csv
+geoloc_url: https://raw.githubusercontent.com/wyot1/GeoLite2-Unwalled/downloads/COUNTRY/CSV/GeoLite2-Country-Locations-en.csv
+ids_url: https://ids-update.kerio.com/update.php?id=%s&version=%s.0&tag=
+license_number: 20339-A95AV-ZAFSK
+log_level: info
+log_path: ./logs/mirror.log
+proxy_url: ""
+retry_count: 3
+retry_delay_seconds: 10
+schedule_time: "03:00"
+webfilter_api: https://updates.kerio.com/webfilter/key
