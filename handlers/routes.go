@@ -143,7 +143,12 @@ func settingsPageHandler(cfg *config.Config, embeddedFiles embed.FS) echo.Handle
 					cfg.BitdefenderUrls = append(cfg.BitdefenderUrls, line)
 				}
 			}
-			cfg.EnableBitdefender = c.FormValue("EnableBitdefender") == "true"
+			// Bitdefender mode (взаимоисключающие опции)
+			bitdefenderMode := c.FormValue("BitdefenderMode")
+			cfg.EnableBitdefender = bitdefenderMode == "updates"
+			cfg.BitdefenderProxyMode = bitdefenderMode == "proxy"
+			cfg.BitdefenderProxyBaseURL = c.FormValue("BitdefenderProxyBaseURL")
+
 			customUrlsRaw := c.FormValue("CustomDownloadUrls")
 			cfg.CustomDownloadUrls = nil
 			for _, line := range strings.Split(customUrlsRaw, "\n") {
@@ -157,8 +162,6 @@ func settingsPageHandler(cfg *config.Config, embeddedFiles embed.FS) echo.Handle
 			cfg.EnableIDS3 = c.FormValue("EnableIDS3") == "true"
 			cfg.EnableIDS4 = c.FormValue("EnableIDS4") == "true"
 			cfg.EnableIDS5 = c.FormValue("EnableIDS5") == "true"
-			cfg.BitdefenderProxyMode = c.FormValue("BitdefenderProxyMode") == "true"
-			cfg.BitdefenderProxyBaseURL = c.FormValue("BitdefenderProxyBaseURL")
 			msg := "Настройки успешно обновлены!"
 
 			// Get config path from context

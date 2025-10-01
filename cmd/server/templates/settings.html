@@ -47,6 +47,16 @@
         <div class="section-card">
           <div class="section-title"><i class="bi bi-clock-history"></i> General Settings</div>
           <div class="mb-3">
+            <label class="form-label">License Number</label>
+            <input type="text" class="form-control" name="LicenseNumber" value="{{.Config.LicenseNumber}}" placeholder="XXXX-XXXX-XXXX-XXXX">
+            <div class="form-text">Required for IDS and WebFilter updates.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Proxy URL</label>
+            <input type="text" class="form-control" name="ProxyURL" value="{{.Config.ProxyURL}}" placeholder="http://proxy:3128">
+            <div class="form-text">HTTP proxy for all outbound requests (optional).</div>
+          </div>
+          <div class="mb-3">
             <label class="form-label">Schedule Time (HH:MM)</label>
             <input type="time" class="form-control" name="ScheduleTime" value="{{.Config.ScheduleTime}}">
             <div class="form-text">Time to start the scheduled task.</div>
@@ -65,19 +75,29 @@
 
         <div class="section-card">
           <div class="section-title"><i class="bi bi-shield-check"></i> Bitdefender</div>
-          <div class="form-check mb-2">
-            <input class="form-check-input" type="checkbox" id="EnableBitdefender" name="EnableBitdefender" value="true" {{if .Config.EnableBitdefender}}checked{{end}}>
-            <label class="form-check-label" for="EnableBitdefender">
-              Enable Bitdefender updates
-            </label>
-            <div class="form-text">Enable scheduled download of Bitdefender databases.</div>
-          </div>
-          <div class="form-check mb-2">
-            <input class="form-check-input" type="checkbox" id="BitdefenderProxyMode" name="BitdefenderProxyMode" value="true" {{if .Config.BitdefenderProxyMode}}checked{{end}}>
-            <label class="form-check-label" for="BitdefenderProxyMode">
-              Enable Bitdefender proxy mode
-            </label>
-            <div class="form-text">Forward requests to Bitdefender server and cache responses locally.</div>
+          <div class="mb-3">
+            <label class="form-label">Bitdefender Mode</label>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" id="BitdefenderDisabled" name="BitdefenderMode" value="disabled" {{if and (not .Config.EnableBitdefender) (not .Config.BitdefenderProxyMode)}}checked{{end}}>
+              <label class="form-check-label" for="BitdefenderDisabled">
+                Disabled
+              </label>
+              <div class="form-text">Bitdefender functionality is disabled.</div>
+            </div>
+            <div class="form-check mt-2">
+              <input class="form-check-input" type="radio" id="BitdefenderUpdates" name="BitdefenderMode" value="updates" {{if .Config.EnableBitdefender}}checked{{end}}>
+              <label class="form-check-label" for="BitdefenderUpdates">
+                Update Mode
+              </label>
+              <div class="form-text">Enable scheduled download of Bitdefender databases.</div>
+            </div>
+            <div class="form-check mt-2">
+              <input class="form-check-input" type="radio" id="BitdefenderProxy" name="BitdefenderMode" value="proxy" {{if .Config.BitdefenderProxyMode}}checked{{end}}>
+              <label class="form-check-label" for="BitdefenderProxy">
+                Proxy Mode
+              </label>
+              <div class="form-text">Forward requests to Bitdefender server and cache responses locally.</div>
+            </div>
           </div>
           <div class="mb-3">
             <label class="form-label">Bitdefender Proxy Base URL</label>
@@ -105,10 +125,6 @@
           <div class="mb-3">
             <label class="form-label">IDS URL</label>
             <input type="text" class="form-control" name="IDSUrl" value="{{.Config.IDSUrl}}" placeholder="https://ids.example.com">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Proxy URL</label>
-            <input type="text" class="form-control" name="ProxyURL" value="{{.Config.ProxyURL}}" placeholder="http://proxy:3128">
           </div>
           <div class="mb-3">
             <label class="form-label">GeoIP4 URL</label>
@@ -154,7 +170,7 @@
         </div>
 
         <div class="section-card">
-          <div class="section-title"><i class="bi bi-folder2-open"></i> Paths and Licensing</div>
+          <div class="section-title"><i class="bi bi-folder2-open"></i> Paths</div>
           <div class="mb-3">
             <label class="form-label">Database Path</label>
             <input type="text" class="form-control" name="DatabasePath" value="{{.Config.DatabasePath}}" placeholder="/path/to/database.db">
@@ -162,10 +178,6 @@
           <div class="mb-3">
             <label class="form-label">Log Path</label>
             <input type="text" class="form-control" name="LogPath" value="{{.Config.LogPath}}" placeholder="/path/to/logs/">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">License Number</label>
-            <input type="text" class="form-control" name="LicenseNumber" value="{{.Config.LicenseNumber}}" placeholder="XXXX-XXXX-XXXX-XXXX">
           </div>
         </div>
 
