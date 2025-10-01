@@ -20,8 +20,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        # os: [ubuntu-latest, windows-latest, macos-latest]
+        # os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         go-version: ['1.24.x']
 
     steps:
@@ -98,7 +98,7 @@ jobs:
       run: |
         mkdir -p release
         cp artifacts/kerio-mirror-go-ubuntu-latest/kerio-mirror-go release/kerio-mirror-go-linux-amd64
-        # cp artifacts/kerio-mirror-go-windows-latest/kerio-mirror-go.exe release/kerio-mirror-go-windows-amd64.exe
+        cp artifacts/kerio-mirror-go-windows-latest/kerio-mirror-go.exe release/kerio-mirror-go-windows-amd64.exe
         cp artifacts/kerio-mirror-go-macos-latest/kerio-mirror-go release/kerio-mirror-go-darwin-amd64
         chmod +x release/kerio-mirror-go-*
         ls -lh release/
