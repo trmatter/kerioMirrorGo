@@ -77,31 +77,24 @@ jobs:
       contents: write
 
     steps:
-    - name: Download binaries (Ubuntu)
+    - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
-        name: kerio-mirror-go-ubuntu-latest
-        path: ./artifacts
+        path: artifacts
 
-    - name: Download binaries (Windows)
-      uses: actions/download-artifact@v4
-      with:
-        name: kerio-mirror-go-windows-latest
-        path: ./artifacts
-
-    - name: Download binaries (macOS)
-      uses: actions/download-artifact@v4
-      with:
-        name: kerio-mirror-go-macos-latest
-        path: ./artifacts
+    - name: Prepare release files
+      run: |
+        mkdir -p release
+        cp artifacts/kerio-mirror-go-ubuntu-latest/kerio-mirror-go release/kerio-mirror-go-linux-amd64
+        cp artifacts/kerio-mirror-go-windows-latest/kerio-mirror-go.exe release/kerio-mirror-go-windows-amd64.exe
+        cp artifacts/kerio-mirror-go-macos-latest/kerio-mirror-go release/kerio-mirror-go-darwin-amd64
+        chmod +x release/kerio-mirror-go-*
+        ls -lh release/
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        files: |
-          artifacts/kerio-mirror-go-ubuntu-latest/kerio-mirror-go
-          artifacts/kerio-mirror-go-windows-latest/kerio-mirror-go.exe
-          artifacts/kerio-mirror-go-macos-latest/kerio-mirror-go
+        files: release/*
         generate_release_notes: true
         draft: false
         prerelease: false
