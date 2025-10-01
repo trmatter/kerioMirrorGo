@@ -59,6 +59,9 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: artifacts
+    
+    - name: List downloaded files
+      run: find artifacts
 
   release:
     needs: build
