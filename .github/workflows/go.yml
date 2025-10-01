@@ -54,6 +54,9 @@ jobs:
       with:
         name: kerio-mirror-go-${{ matrix.os }}
         path: kerio-mirror-go${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+    
+    - name: List downloaded files
+      run: find artifacts
 
   release:
     needs: build
