@@ -61,7 +61,7 @@ jobs:
         path: artifacts
     
     - name: List downloaded files
-      run: find artifacts
+      run: ls -R artifacts
 
   release:
     needs: build
