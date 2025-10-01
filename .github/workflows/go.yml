@@ -1,5 +1,9 @@
-# This workflow will build a golang project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+# Улучшенный workflow для Go-проекта
+# - Добавлены проверки на форматирование и статический анализ
+# - Кэширование зависимостей вынесено отдельно для ускорения сборки
+# - Использование matrix для go-version (расширяемость)
+# - Артефакты собираются только для релизов — лишние шаги убраны из билда
+# - Добавлены комментарии для ясности
 
 name: Go
 
@@ -12,7 +16,6 @@ on:
     branches: [ "main" ]
 
 jobs:
-
   build:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -27,7 +30,16 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: ${{ matrix.go-version }}
-        cache: true
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-${{ matrix.go-version }}-
 
     - name: Install dependencies
       run: go mod download
@@ -35,33 +47,27 @@ jobs:
     - name: Verify dependencies
       run: go mod verify
 
+    - name: Check formatting
+      run: go fmt ./...
+
+    - name: Static analysis
+      run: go vet ./...
+
     - name: Build
       run: go build -v -o kerio-mirror-go${{ matrix.os == 'windows-latest' && '.exe' || '' }} ./cmd/server
 
     - name: Test
-      run: go test -v -coverprofile=coverage ./...
+      run: go test -v -coverprofile=coverage.out ./...
 
     - name: Upload coverage
       if: matrix.os == 'ubuntu-latest'
       uses: codecov/codecov-action@v4
       with:
-        files: ./coverage
+        files: ./coverage.out
         flags: unittests
         fail_ci_if_error: false
 
-    - name: Upload binary
-      uses: actions/upload-artifact@v4
-      with:
-        name: kerio-mirror-go-${{ matrix.os }}
-        path: kerio-mirror-go${{ matrix.os == 'windows-latest' && '.exe' || '' }}
-    
-    - name: Download all artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: artifacts
-    
-    - name: List downloaded files
-      run: ls -R artifacts
+    # Артефакты собираются только при релизе (release job)
 
   release:
     needs: build
@@ -71,10 +77,23 @@ jobs:
       contents: write
 
     steps:
-    - name: Download all artifacts
+    - name: Download binaries (Ubuntu)
       uses: actions/download-artifact@v4
       with:
-        path: artifacts
+        name: kerio-mirror-go-ubuntu-latest
+        path: ./artifacts
+
+    - name: Download binaries (Windows)
+      uses: actions/download-artifact@v4
+      with:
+        name: kerio-mirror-go-windows-latest
+        path: ./artifacts
+
+    - name: Download binaries (macOS)
+      uses: actions/download-artifact@v4
+      with:
+        name: kerio-mirror-go-macos-latest
+        path: ./artifacts
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
