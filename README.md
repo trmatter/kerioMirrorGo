@@ -1,37 +1,58 @@
 # kerio-mirror-go
 
+[![Go](https://github.com/TheTitanrain/kerioMirrorGo/actions/workflows/go.yml/badge.svg)](https://github.com/TheTitanrain/kerioMirrorGo/actions/workflows/go.yml)
+[![codecov](https://codecov.io/gh/TheTitanrain/kerioMirrorGo/branch/main/graph/badge.svg)](https://codecov.io/gh/TheTitanrain/kerioMirrorGo)
+[![Go Report Card](https://goreportcard.com/badge/github.com/TheTitanrain/kerioMirrorGo)](https://goreportcard.com/report/github.com/TheTitanrain/kerioMirrorGo)
+
 ## Description
 
 kerio-mirror-go is a Go application designed to mirror definition files used by Kerio Control, such as IDS, GeoIP, WebFilter, and Bitdefender databases. It downloads and updates these files on a scheduled basis and serves them via HTTP/HTTPS. It is intended to be used in environments where Kerio Control is deployed, allowing for local access to the latest definitions without relying on external sources.
 
-## Prerequisites
+## Features
 
-- Go (version 1.18 or higher recommended)
+- 🔄 **Scheduled Updates**: Automatic daily updates at configured time
+- 🗄️ **SQLite Database**: Pure-Go implementation (no CGO required)
+- 🌐 **HTTP/HTTPS Server**: Dual-port serving (80/443)
+- 🛡️ **Multi-Platform**: Supports Linux, Windows, and macOS
+- 📊 **Web Dashboard**: Monitor status and manage settings
+- 🔍 **IDS Support**: Versions 1-5 with selective enabling
+- 🌍 **GeoIP Mirroring**: IPv4/IPv6 databases
+- 🦠 **Bitdefender**: Full mirror + proxy mode with caching
+- 🔑 **WebFilter**: License key management
+- 📁 **Custom Files**: Mirror any additional URLs
 
-## Setup
+## Installation
 
-1. Clone the repository:
+### Download Pre-built Binaries
 
-   ```bash
-   git clone <repository_url>
-   cd kerio-mirror-go
-   ```
+Download the latest release for your platform from the [Releases](https://github.com/TheTitanrain/kerioMirrorGo/releases) page:
 
-2. Build the project:
+- `kerio-mirror-go-linux-amd64` - Linux x64
+- `kerio-mirror-go-windows-amd64.exe` - Windows x64
+- `kerio-mirror-go-darwin-amd64` - macOS x64
 
-   ```bash
-   go build -o kerio-mirror-go ./cmd/server
-   ```
+### Build from Source
 
-   **Note:** The project uses `modernc.org/sqlite` (pure-Go implementation), so no CGO or GCC is required.
+**Prerequisites:**
+- Go 1.24.x or higher
 
-3. Create a configuration file (e.g., `config.yaml`) based on the configuration section below.
+**Clone and build:**
 
-4. Run the application:
+```bash
+git clone https://github.com/TheTitanrain/kerioMirrorGo.git
+cd kerioMirrorGo
+go build -o kerio-mirror-go ./cmd/server
+```
 
-   ```bash
-   ./kerio-mirror-go
-   ```
+**Note:** The project uses `modernc.org/sqlite` (pure-Go implementation), so no CGO or GCC is required.
+
+### Run the Application
+
+```bash
+./kerio-mirror-go -config config.yaml
+```
+
+Default config path is `config.yaml` if not specified.
 
 ## Testing
 
@@ -88,51 +109,170 @@ To run the application as a Windows service using NSSM (Non-Sucking Service Mana
 
 ## Configuration
 
-The application reads its configuration from a file `config.yaml`.
+The application reads its configuration from `config.yaml`. All settings can also be managed via the web interface at `/settings`.
 
-The configuration file should contain key-value pairs. Based on the code, the following options are expected:
+### Key Configuration Options
 
-- `DatabasePath`: Path to the SQLite database file.
-- `LogPath`: Path to the log file.
-- `ScheduleInterval`: Interval (in hours) for scheduled updates.
-- `GeoIP4Url`: URL for the GeoIP v4 database.
-- `GeoIP6Url`: URL for the GeoIP v6 database.
-- `GeoLocUrl`: URL for the GeoLocations file.
-- `BitdefenderUrls`: Comma-separated URLs for Bitdefender databases.
+| Option | Description | Default |
+|--------|-------------|---------|
+| `SCHEDULE_TIME` | Daily update time (HH:MM format) | `03:00` |
+| `LICENSE_NUMBER` | Kerio Control license for IDS/WebFilter | Required |
+| `DATABASE_PATH` | SQLite database file path | `./mirror.db` |
+| `LOG_PATH` | Log file path | `./logs/mirror.log` |
+| `PROXY_URL` | HTTP proxy for outbound requests | - |
+| `ENABLE_IDS1` - `ENABLE_IDS5` | Enable/disable IDS versions | `true` |
+| `ENABLE_BITDEFENDER` | Enable Bitdefender updates | `true` |
+| `BITDEFENDER_PROXY_MODE` | Enable proxy mode with caching | `false` |
+| `BITDEFENDER_PROXY_BASE_URL` | Upstream URL for proxy mode | `https://upgrade.bitdefender.com` |
+| `CUSTOM_DOWNLOAD_URLS` | Array of custom URLs to mirror | `[]` |
+| `RETRY_COUNT` | Download retry attempts | `3` |
+| `RETRY_DELAY_SECONDS` | Delay between retries | `10` |
 
-Example `config.yaml` file:
+### Example Configuration
 
 ```yaml
-bitdefender_urls: []
-database_path: ./mirror.db
-geoip4_url: https://raw.githubusercontent.com/wyot1/GeoLite2-Unwalled/downloads/COUNTRY/CSV/GeoLite2-Country-Blocks-IPv4.csv
-geoip6_url: https://raw.githubusercontent.com/wyot1/GeoLite2-Unwalled/downloads/COUNTRY/CSV/GeoLite2-Country-Blocks-IPv6.csv
-geoloc_url: https://raw.githubusercontent.com/wyot1/GeoLite2-Unwalled/downloads/COUNTRY/CSV/GeoLite2-Country-Locations-en.csv
-ids_url: ""
-license_number: ""
-log_path: ./logs/mirror.log
-proxy_url: ""
-retry_count: 3
-retry_delay_seconds: 10
-schedule_interval: 23
-webfilter_api: https://updates.kerio.com/webfilter/key
+SCHEDULE_TIME: "03:00"
+LICENSE_NUMBER: "your-license-here"
+DATABASE_PATH: ./mirror.db
+LOG_PATH: ./logs/mirror.log
+LOG_LEVEL: info
+PROXY_URL: ""
+
+# IDS Settings
+ENABLE_IDS1: true
+ENABLE_IDS2: true
+ENABLE_IDS3: true
+ENABLE_IDS4: true
+ENABLE_IDS5: true
+IDS_URL: https://update.kerio.com/dwn/control/update.php?license=%s&version=%s
+
+# Bitdefender Settings
+ENABLE_BITDEFENDER: true
+BITDEFENDER_PROXY_MODE: false
+BITDEFENDER_PROXY_BASE_URL: https://upgrade.bitdefender.com
+BITDEFENDER_URLS: []
+
+# GeoIP Settings
+GEOIP4_URL: https://raw.githubusercontent.com/wyot1/GeoLite2-Unwalled/downloads/COUNTRY/CSV/GeoLite2-Country-Blocks-IPv4.csv
+GEOIP6_URL: https://raw.githubusercontent.com/wyot1/GeoLite2-Unwalled/downloads/COUNTRY/CSV/GeoLite2-Country-Blocks-IPv6.csv
+GEOLOC_URL: https://raw.githubusercontent.com/wyot1/GeoLite2-Unwalled/downloads/COUNTRY/CSV/GeoLite2-Country-Locations-en.csv
+
+# WebFilter Settings
+WEBFILTER_API: https://updates.kerio.com/webfilter/key
+
+# Custom Downloads
+CUSTOM_DOWNLOAD_URLS: []
+
+# Retry Settings
+RETRY_COUNT: 3
+RETRY_DELAY_SECONDS: 10
 ```
 
-## Functionality
+## Usage
 
-- **Scheduled Updates**: Downloads and updates definition files at a configurable interval.
-- **Database**: Uses SQLite to store information, including the last update time.
-- **HTTP/HTTPS Server**: Serves the definition files via HTTP (port 80) and HTTPS (port 443). Requires `cert.pem` and `key.pem` for HTTPS.
-- **Supported Definitions**: Mirrors IDS, GeoIP, GeoLocations, WebFilter, and Bitdefender definitions.
+### Web Dashboard
 
-## Dependencies
+Access the web interface at `http://localhost/` (or `https://localhost/` if HTTPS is configured with `cert.pem` and `key.pem`).
 
-- `github.com/labstack/echo/v4` for the HTTP server.
-- `github.com/sirupsen/logrus` for logging.
-- `modernc.org/sqlite` for SQLite database access (pure-Go, no CGO required).
-- `github.com/spf13/viper` for configuration management.
-- Other standard Go libraries.
+**Available Routes:**
+- `/` - Dashboard showing update status and versions
+- `/settings` - Configuration management
+- `/logs` - View application logs
+- `/update.php` - Kerio Control update endpoint
+- `/control-update/*` - Serves definition files
+- `/getkey.php` - WebFilter key endpoint
+
+### Command Line Options
+
+```bash
+./kerio-mirror-go -config /path/to/config.yaml
+```
+
+### File Storage
+
+Downloaded files are stored in the `mirror/` directory:
+- `mirror/` - IDS files and signatures
+- `mirror/bitdefender/` - Bitdefender databases (or cache if proxy mode)
+- `mirror/geo/` - GeoIP CSV files
+- `mirror/custom/` - Custom downloaded files
+
+### Bitdefender Proxy Mode
+
+When `BITDEFENDER_PROXY_MODE: true`, the server acts as a caching proxy:
+1. Requests to Bitdefender URLs are forwarded to `BITDEFENDER_PROXY_BASE_URL`
+2. Responses are cached locally in `mirror/bitdefender/`
+3. Subsequent requests are served from cache
+4. Non-cacheable files (versions.id, version.txt, cumulative.txt) are always fetched fresh
+
+## API Endpoints
+
+### Update Endpoint (Kerio Control)
+
+```http
+GET /update.php?license=XXX&version=9.4.1
+```
+
+Returns update information for Kerio Control, mimicking the official API.
+
+### WebFilter Key
+
+```http
+GET /getkey.php?number=YOUR_LICENSE
+```
+
+Returns the WebFilter key for the specified license number.
+
+## Development
+
+### Project Structure
+
+```
+kerioMirrorGo/
+├── cmd/server/          # Main application entry point
+├── config/              # Configuration management
+├── db/                  # Database initialization and schema
+├── handlers/            # HTTP request handlers
+├── logging/             # Logging utilities
+├── mirror/              # Mirror logic for each component
+│   ├── bitdefender.go
+│   ├── bitdefender_proxy.go
+│   ├── custom.go
+│   ├── geo.go
+│   ├── ids.go
+│   ├── mirror.go
+│   └── webfilter.go
+├── utils/               # Utilities (HTTP client, file ops)
+├── templates/           # HTML templates (embedded)
+└── static/              # Static assets (embedded)
+```
+
+### Dependencies
+
+- **Web Framework**: `github.com/labstack/echo/v4`
+- **Logging**: `github.com/sirupsen/logrus`
+- **Database**: `modernc.org/sqlite` (pure-Go, no CGO)
+- **Configuration**: `github.com/spf13/viper`
+
+### CI/CD
+
+The project uses GitHub Actions for:
+- Multi-platform builds (Linux, Windows, macOS)
+- Automated testing with coverage reports
+- Automatic release creation on version tags
+- Binary artifact uploads
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes with tests
+4. Run `go test ./...` to verify
+5. Submit a pull request
 
 ## License
 
 [Specify your license here]
+
+## Support
+
+For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/TheTitanrain/kerioMirrorGo).
