@@ -55,6 +55,11 @@ jobs:
         name: kerio-mirror-go-${{ matrix.os }}
         path: kerio-mirror-go${{ matrix.os == 'windows-latest' && '.exe' || '' }}
     
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+    
     - name: List downloaded files
       run: find artifacts
 
