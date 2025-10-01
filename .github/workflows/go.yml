@@ -68,7 +68,13 @@ jobs:
         flags: unittests
         fail_ci_if_error: false
 
-    # Артефакты собираются только при релизе (release job)
+    - name: Upload binary artifact
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: actions/upload-artifact@v4
+      with:
+        name: kerio-mirror-go-${{ matrix.os }}
+        path: kerio-mirror-go${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+        retention-days: 1
 
   release:
     needs: build
@@ -82,6 +88,11 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: ./artifacts
+
+    - name: List downloaded artifacts
+      run: |
+        echo "Contents of artifacts directory:"
+        ls -R artifacts/
 
     - name: Prepare release files
       run: |
