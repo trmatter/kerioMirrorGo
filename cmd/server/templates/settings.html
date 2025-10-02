@@ -110,7 +110,7 @@
           <div class="section-title"><i class="bi bi-cloud-download"></i> Custom Download URLs</div>
           <div class="mb-3">
             <label class="form-label">Custom Download URLs (one per line)</label>
-            <textarea class="form-control" name="CustomDownloadUrls" rows="4" placeholder="https://example.com/file1.zip">{{range .Config.CustomDownloadUrls}}{{.}}
+            <textarea class="form-control" name="CustomDownloadUrls" rows="4" placeholder="https://example.com/file1.zip">{{range .Config.CustomDownloadURLs}}{{.}}
 {{end}}</textarea>
             <div class="form-text">Specify additional download URLs, one per line.</div>
           </div>
@@ -120,23 +120,23 @@
           <div class="section-title"><i class="bi bi-link-45deg"></i> API Endpoints</div>
           <div class="mb-3">
             <label class="form-label">WebFilter API</label>
-            <input type="text" class="form-control" name="WebFilterApi" value="{{.Config.WebFilterApi}}" placeholder="https://example.com/api">
+            <input type="text" class="form-control" name="WebFilterApi" value="{{.Config.WebFilterAPI}}" placeholder="https://example.com/api">
           </div>
           <div class="mb-3">
             <label class="form-label">IDS URL</label>
-            <input type="text" class="form-control" name="IDSUrl" value="{{.Config.IDSUrl}}" placeholder="https://ids.example.com">
+            <input type="text" class="form-control" name="IDSUrl" value="{{.Config.IDSURL}}" placeholder="https://ids.example.com">
           </div>
           <div class="mb-3">
             <label class="form-label">GeoIP4 URL</label>
-            <input type="text" class="form-control" name="GeoIP4Url" value="{{.Config.GeoIP4Url}}">
+            <input type="text" class="form-control" name="GeoIP4Url" value="{{.Config.GeoIP4URL}}">
           </div>
           <div class="mb-3">
             <label class="form-label">GeoIP6 URL</label>
-            <input type="text" class="form-control" name="GeoIP6Url" value="{{.Config.GeoIP6Url}}">
+            <input type="text" class="form-control" name="GeoIP6Url" value="{{.Config.GeoIP6URL}}">
           </div>
           <div class="mb-3">
             <label class="form-label">GeoLoc URL</label>
-            <input type="text" class="form-control" name="GeoLocUrl" value="{{.Config.GeoLocUrl}}">
+            <input type="text" class="form-control" name="GeoLocUrl" value="{{.Config.GeoLocURL}}">
           </div>
         </div>
 

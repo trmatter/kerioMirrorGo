@@ -102,9 +102,15 @@ func RegisterRoutes(e *echo.Echo, cfg *config.Config, logger *logrus.Logger, emb
 
 func dashboardHandler(embeddedFiles embed.FS) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		logger := c.Get("logger").(*logrus.Logger)
+		logger, ok := c.Get("logger").(*logrus.Logger)
+		if !ok {
+			return c.String(http.StatusInternalServerError, "Internal Server Error")
+		}
 		logger.Infof("Web access: %s %s from %s", c.Request().Method, c.Request().URL.Path, c.RealIP())
-		cfg := c.Get("config").(*config.Config)
+		cfg, ok := c.Get("config").(*config.Config)
+		if !ok {
+			return c.String(http.StatusInternalServerError, "Internal Server Error")
+		}
 		status, err := getDashboardStatus(cfg)
 		if err != nil {
 			return c.String(http.StatusInternalServerError, "Failed to load status")
@@ -120,7 +126,10 @@ func dashboardHandler(embeddedFiles embed.FS) echo.HandlerFunc {
 
 func settingsPageHandler(cfg *config.Config, embeddedFiles embed.FS) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		logger := c.Get("logger").(*logrus.Logger)
+		logger, ok := c.Get("logger").(*logrus.Logger)
+		if !ok {
+			return c.String(http.StatusInternalServerError, "Internal Server Error")
+		}
 		logger.Infof("Web access: %s %s from %s", c.Request().Method, c.Request().URL.Path, c.RealIP())
 		if c.Request().Method == http.MethodPost {
 			cfg.ScheduleTime = c.FormValue("ScheduleTime")
@@ -128,19 +137,19 @@ func settingsPageHandler(cfg *config.Config, embeddedFiles embed.FS) echo.Handle
 			cfg.LogPath = c.FormValue("LogPath")
 			cfg.ProxyURL = c.FormValue("ProxyURL")
 			cfg.LicenseNumber = c.FormValue("LicenseNumber")
-			cfg.WebFilterApi = c.FormValue("WebFilterApi")
-			cfg.GeoIP4Url = c.FormValue("GeoIP4Url")
-			cfg.GeoIP6Url = c.FormValue("GeoIP6Url")
-			cfg.GeoLocUrl = c.FormValue("GeoLocUrl")
+			cfg.WebFilterAPI = c.FormValue("WebFilterApi")
+			cfg.GeoIP4URL = c.FormValue("GeoIP4Url")
+			cfg.GeoIP6URL = c.FormValue("GeoIP6Url")
+			cfg.GeoLocURL = c.FormValue("GeoLocUrl")
 			cfg.RetryCount, _ = strconv.Atoi(c.FormValue("RetryCount"))
 			cfg.RetryDelaySeconds, _ = strconv.Atoi(c.FormValue("RetryDelaySeconds"))
-			cfg.IDSUrl = c.FormValue("IDSUrl")
+			cfg.IDSURL = c.FormValue("IDSUrl")
 			bitdefUrlsRaw := c.FormValue("BitdefenderUrls")
-			cfg.BitdefenderUrls = nil
+			cfg.BitdefenderURLs = nil
 			for _, line := range strings.Split(bitdefUrlsRaw, "\n") {
 				line = strings.TrimSpace(line)
 				if line != "" {
-					cfg.BitdefenderUrls = append(cfg.BitdefenderUrls, line)
+					cfg.BitdefenderURLs = append(cfg.BitdefenderURLs, line)
 				}
 			}
 			// Bitdefender mode (взаимоисключающие опции)
@@ -150,11 +159,11 @@ func settingsPageHandler(cfg *config.Config, embeddedFiles embed.FS) echo.Handle
 			cfg.BitdefenderProxyBaseURL = c.FormValue("BitdefenderProxyBaseURL")
 
 			customUrlsRaw := c.FormValue("CustomDownloadUrls")
-			cfg.CustomDownloadUrls = nil
+			cfg.CustomDownloadURLs = nil
 			for _, line := range strings.Split(customUrlsRaw, "\n") {
 				line = strings.TrimSpace(line)
 				if line != "" {
-					cfg.CustomDownloadUrls = append(cfg.CustomDownloadUrls, line)
+					cfg.CustomDownloadURLs = append(cfg.CustomDownloadURLs, line)
 				}
 			}
 			cfg.EnableIDS1 = c.FormValue("EnableIDS1") == "true"
@@ -202,7 +211,10 @@ func settingsPageHandler(cfg *config.Config, embeddedFiles embed.FS) echo.Handle
 
 func serveFileHandler(path string, embeddedFiles embed.FS) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		logger := c.Get("logger").(*logrus.Logger)
+		logger, ok := c.Get("logger").(*logrus.Logger)
+		if !ok {
+			return c.String(http.StatusInternalServerError, "Internal Server Error")
+		}
 		logger.Infof("Web access: %s %s from %s", c.Request().Method, c.Request().URL.Path, c.RealIP())
 		data, err := os.ReadFile(path)
 		if err != nil {
@@ -265,7 +277,7 @@ func serveFullRawLogHandler(path string) echo.HandlerFunc {
 
 func updateHandler(cfg *config.Config, logger *logrus.Logger) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		go mirror.MirrorUpdate(cfg, logger)
+		go mirror.Update(cfg, logger)
 		return c.Redirect(http.StatusSeeOther, "/logs")
 	}
 }
@@ -294,9 +306,10 @@ func updateKerioHandler(cfg *config.Config, logger *logrus.Logger) echo.HandlerF
 		}
 
 		// Special cases handling
-		if majorVersion == 0 {
+		switch majorVersion {
+		case 0:
 			return c.String(http.StatusOK, "0:0.0")
-		} else if majorVersion == 9 || majorVersion == 10 {
+		case 9, 10:
 			// Если включен режим прокси Bitdefender, перенаправляем клиента на наш сервер
 			if cfg.BitdefenderProxyMode {
 				return c.String(http.StatusOK, "THDdir=http://"+c.Request().Host+"/")
@@ -343,7 +356,10 @@ func updateKerioHandler(cfg *config.Config, logger *logrus.Logger) echo.HandlerF
 
 func webFilterKeyHandler(cfg *config.Config) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		logger := c.Get("logger").(*logrus.Logger)
+		logger, ok := c.Get("logger").(*logrus.Logger)
+		if !ok {
+			return c.String(http.StatusInternalServerError, "Internal Server Error")
+		}
 		logger.Infof("Web access: %s %s from %s", c.Request().Method, c.Request().URL.Path, c.RealIP())
 		if cfg.LicenseNumber == "" {
 			return c.String(http.StatusNotFound, "404 Not found")

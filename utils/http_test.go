@@ -51,18 +51,18 @@ func TestCreateHTTPClient_InvalidProxy(t *testing.T) {
 	}
 }
 
-func TestHttpGetWithRetry_Success(t *testing.T) {
+func TestHTTPGetWithRetry_Success(t *testing.T) {
 	// Create test server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("test response"))
 	}))
 	defer server.Close()
 
 	// Test successful request
-	resp, err := HttpGetWithRetry(server.URL, 3, 100*time.Millisecond, "")
+	resp, err := HTTPGetWithRetry(server.URL, 3, 100*time.Millisecond, "")
 	if err != nil {
-		t.Fatalf("HttpGetWithRetry failed: %v", err)
+		t.Fatalf("HTTPGetWithRetry failed: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -71,9 +71,9 @@ func TestHttpGetWithRetry_Success(t *testing.T) {
 	}
 }
 
-func TestHttpGetWithRetry_FailureThenSuccess(t *testing.T) {
+func TestHTTPGetWithRetry_FailureThenSuccess(t *testing.T) {
 	attempts := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		attempts++
 		if attempts < 2 {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -84,9 +84,9 @@ func TestHttpGetWithRetry_FailureThenSuccess(t *testing.T) {
 	defer server.Close()
 
 	// Should succeed on second attempt
-	resp, err := HttpGetWithRetry(server.URL, 3, 10*time.Millisecond, "")
+	resp, err := HTTPGetWithRetry(server.URL, 3, 10*time.Millisecond, "")
 	if err != nil {
-		t.Fatalf("HttpGetWithRetry failed: %v", err)
+		t.Fatalf("HTTPGetWithRetry failed: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -99,21 +99,21 @@ func TestHttpGetWithRetry_FailureThenSuccess(t *testing.T) {
 	}
 }
 
-func TestHttpGetWithRetry_AllFailed(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func TestHTTPGetWithRetry_AllFailed(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer server.Close()
 
 	// Should fail after all retries
-	_, err := HttpGetWithRetry(server.URL, 2, 10*time.Millisecond, "")
+	_, err := HTTPGetWithRetry(server.URL, 2, 10*time.Millisecond, "")
 	if err == nil {
 		t.Error("Expected error after all retries failed")
 	}
 }
 
-func TestHttpGetWithRetry_InvalidURL(t *testing.T) {
-	_, err := HttpGetWithRetry("http://invalid-domain-that-does-not-exist-12345.com", 1, 10*time.Millisecond, "")
+func TestHTTPGetWithRetry_InvalidURL(t *testing.T) {
+	_, err := HTTPGetWithRetry("http://invalid-domain-that-does-not-exist-12345.com", 1, 10*time.Millisecond, "")
 	if err == nil {
 		t.Error("Expected error for invalid URL")
 	}
@@ -125,15 +125,15 @@ func BenchmarkCreateHTTPClient(b *testing.B) {
 	}
 }
 
-func BenchmarkHttpGetWithRetry(b *testing.B) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func BenchmarkHTTPGetWithRetry(b *testing.B) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		resp, _ := HttpGetWithRetry(server.URL, 1, 10*time.Millisecond, "")
+		resp, _ := HTTPGetWithRetry(server.URL, 1, 10*time.Millisecond, "")
 		if resp != nil {
 			resp.Body.Close()
 		}

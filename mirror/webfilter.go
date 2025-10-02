@@ -3,8 +3,8 @@ package mirror
 import (
 	"database/sql"
 	"fmt"
-	"time"
 	"io"
+	"time"
 
 	"kerio-mirror-go/config"
 	"kerio-mirror-go/db"
@@ -45,7 +45,7 @@ func UpdateWebFilterKey(conn *sql.DB, cfg *config.Config, logger *logrus.Logger)
 	}
 
 	for _, att := range attempts {
-		resp, err := utils.HttpGetWithRetry(url, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, att.proxy)
+		resp, err := utils.HTTPGetWithRetry(url, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, att.proxy)
 		if err != nil {
 			logger.Warnf("Error fetching Web Filter key %s: %v", att.desc, err)
 			continue

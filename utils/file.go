@@ -20,7 +20,7 @@ import (
 // SaveResponseToFile saves HTTP response body to the given path
 func SaveResponseToFile(body io.ReadCloser, destPath string) error {
 	defer body.Close()
-	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(destPath), 0750); err != nil {
 		return err
 	}
 	out, err := os.Create(destPath)
@@ -69,7 +69,7 @@ func CleanupOldFiles(rootDir string, maxAgeDays, maxFiles int) error {
 		for i, file := range files {
 			full := filepath.Join(dirPath, file.name)
 			if i >= maxFiles || file.mod.Before(cutoff) {
-				os.Remove(full)
+				_ = os.Remove(full) // ignore error, file may already be deleted
 			}
 		}
 	}
@@ -103,11 +103,12 @@ func AtoiSafe(s string) int {
 
 // DownloadFileWithProxy downloads a file with optional proxy and retry
 func DownloadFileWithProxy(url, destPath, proxyURL string, retries int, delay time.Duration, logger *logrus.Logger) bool {
-	resp, err := HttpGetWithRetry(url, retries, delay, proxyURL)
+	resp, err := HTTPGetWithRetry(url, retries, delay, proxyURL)
 	if err != nil {
 		logger.Errorf("Download error: %v", err)
 		return false
 	}
+	defer resp.Body.Close()
 	err = SaveResponseToFile(resp.Body, destPath)
 	if err != nil {
 		logger.Errorf("Save file error: %v", err)

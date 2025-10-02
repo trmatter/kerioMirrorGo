@@ -24,7 +24,7 @@ func CreateHTTPClient(proxyURL string) (*http.Client, error) {
 }
 
 // HttpGetWithRetry performs GET with retries, поддерживает прокси
-func HttpGetWithRetry(urlStr string, retries int, delay time.Duration, proxyURL string) (*http.Response, error) {
+func HTTPGetWithRetry(urlStr string, retries int, delay time.Duration, proxyURL string) (*http.Response, error) {
 	transport := &http.Transport{}
 	if proxyURL != "" {
 		proxyParsed, err := url.Parse(proxyURL)

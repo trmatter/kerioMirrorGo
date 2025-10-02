@@ -16,7 +16,7 @@ import (
 
 // DownloadAndUpdateIDS implements the python logic for IDS update discovery and download
 func DownloadAndUpdateIDS(conn *sql.DB, cfg *config.Config, logger *logrus.Logger) {
-	if cfg.IDSUrl == "" {
+	if cfg.IDSURL == "" {
 		logger.Warn("IDS URL is not configured")
 		return
 	}
@@ -44,8 +44,8 @@ func DownloadAndUpdateIDS(conn *sql.DB, cfg *config.Config, logger *logrus.Logge
 			logger.Infof("IDSv%s: passing because license key is not configured", version)
 			continue
 		}
-		url := fmt.Sprintf(cfg.IDSUrl, cfg.LicenseNumber, version)
-		resp, err := utils.HttpGetWithRetry(url, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, cfg.ProxyURL)
+		url := fmt.Sprintf(cfg.IDSURL, cfg.LicenseNumber, version)
+		resp, err := utils.HTTPGetWithRetry(url, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, cfg.ProxyURL)
 		if err != nil {
 			logger.Errorf("IDSv%s: request error: %v", version, err)
 			continue
@@ -102,7 +102,10 @@ func DownloadAndUpdateIDS(conn *sql.DB, cfg *config.Config, logger *logrus.Logge
 			continue
 		}
 		logger.Infof("IDSv%s: downloading new version: %d", version, remoteVersion)
-		os.MkdirAll("mirror", 0755)
+		if err := os.MkdirAll("mirror", 0755); err != nil {
+			logger.Errorf("IDSv%s: failed to create mirror directory: %v", version, err)
+			continue
+		}
 		filename := filepath.Base(downloadLink)
 		destPath := filepath.Join("mirror", filename)
 		if !utils.DownloadFileWithProxy(downloadLink, destPath, cfg.ProxyURL, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, logger) {
@@ -111,8 +114,8 @@ func DownloadAndUpdateIDS(conn *sql.DB, cfg *config.Config, logger *logrus.Logge
 		}
 		if version == "1" || version == "2" || version == "3" || version == "5" {
 			sigPath := destPath + ".sig"
-			sigUrl := downloadLink + ".sig"
-			if !utils.DownloadFileWithProxy(sigUrl, sigPath, cfg.ProxyURL, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, logger) {
+			sigURL := downloadLink + ".sig"
+			if !utils.DownloadFileWithProxy(sigURL, sigPath, cfg.ProxyURL, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, logger) {
 				logger.Errorf("IDSv%s: failed to download signature file", version)
 				continue
 			}

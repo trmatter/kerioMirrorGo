@@ -14,13 +14,13 @@ func NewLogger(logPath string, logLevel string) *logrus.Logger {
 
 	// Create logs directory if it doesn't exist
 	logDir := filepath.Dir(logPath)
-	if err := os.MkdirAll(logDir, 0755); err != nil {
+	if err := os.MkdirAll(logDir, 0750); err != nil {
 		logger.Warnf("Failed to create log directory %s: %v", logDir, err)
 		logger.SetOutput(os.Stdout)
 		return logger
 	}
 
-	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		logger.Warnf("Failed to open log file %s: %v", logPath, err)
 		logger.SetOutput(os.Stdout)

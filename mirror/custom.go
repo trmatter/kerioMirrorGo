@@ -9,10 +9,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// DownloadCustomFiles скачивает все файлы из CustomDownloadUrls, сохраняя относительный путь
+// DownloadCustomFiles скачивает все файлы из CustomDownloadURLs, сохраняя относительный путь
 func DownloadCustomFiles(cfg *config.Config, logger *logrus.Logger) {
 	customDir := "mirror/custom"
-	for _, url := range cfg.CustomDownloadUrls {
+	for _, url := range cfg.CustomDownloadURLs {
 		if url == "" {
 			continue
 		}

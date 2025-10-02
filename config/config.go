@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt" // Import fmt for error handling
 	"path/filepath"
 
@@ -8,29 +9,29 @@ import (
 )
 
 type Config struct {
-	ScheduleTime       string // время запуска в формате HH:MM
-	IDSUrl             string
-	WebFilterApi       string
-	BitdefenderUrls    []string
-	EnableBitdefender  bool // Включить обновление Bitdefender
-	DatabasePath       string
-	LogPath            string
-	RetryCount         int
-	RetryDelaySeconds  int
-	ProxyURL           string // URL прокси-сервера, если требуется
-	GeoIP4Url          string
-	GeoIP6Url          string
-	GeoLocUrl          string
-	LicenseNumber      string
-	LogLevel           string   // уровень логирования: debug, info, warn, error
-	CustomDownloadUrls []string // Пользовательские URL для скачивания
-	EnableIDS1              bool // Включить обновление IDS1
-	EnableIDS2              bool // Включить обновление IDS2
-	EnableIDS3              bool // Включить обновление IDS3
-	EnableIDS4              bool // Включить обновление IDS4
-	EnableIDS5              bool // Включить обновление IDS5
-	BitdefenderProxyMode    bool // Режим прокси для Bitdefender (запросы передаются на сервер и кэшируются)
-	BitdefenderProxyBaseURL string // Базовый URL для прокси Bitdefender
+	ScheduleTime            string // время запуска в формате HH:MM
+	IDSURL                  string
+	WebFilterAPI            string
+	BitdefenderURLs         []string
+	EnableBitdefender       bool // Включить обновление Bitdefender
+	DatabasePath            string
+	LogPath                 string
+	RetryCount              int
+	RetryDelaySeconds       int
+	ProxyURL                string // URL прокси-сервера, если требуется
+	GeoIP4URL               string
+	GeoIP6URL               string
+	GeoLocURL               string
+	LicenseNumber           string
+	LogLevel                string   // уровень логирования: debug, info, warn, error
+	CustomDownloadURLs      []string // Пользовательские URL для скачивания
+	EnableIDS1              bool     // Включить обновление IDS1
+	EnableIDS2              bool     // Включить обновление IDS2
+	EnableIDS3              bool     // Включить обновление IDS3
+	EnableIDS4              bool     // Включить обновление IDS4
+	EnableIDS5              bool     // Включить обновление IDS5
+	BitdefenderProxyMode    bool     // Режим прокси для Bitdefender (запросы передаются на сервер и кэшируются)
+	BitdefenderProxyBaseURL string   // Базовый URL для прокси Bitdefender
 }
 
 func Load(path string) (*Config, error) {
@@ -72,21 +73,21 @@ func Load(path string) (*Config, error) {
 	}
 
 	return &Config{
-		ScheduleTime:       viper.GetString("SCHEDULE_TIME"),
-		IDSUrl:             viper.GetString("IDS_URL"),
-		WebFilterApi:       viper.GetString("WEBFILTER_API"),
-		EnableBitdefender:  viper.GetBool("ENABLE_BITDEFENDER"),
-		DatabasePath:       viper.GetString("DATABASE_PATH"),
-		LogPath:            viper.GetString("LOG_PATH"),
-		RetryCount:         viper.GetInt("RETRY_COUNT"),
-		RetryDelaySeconds:  viper.GetInt("RETRY_DELAY_SECONDS"),
-		ProxyURL:           viper.GetString("PROXY_URL"),
-		GeoIP4Url:          viper.GetString("GEOIP4_URL"),
-		GeoIP6Url:          viper.GetString("GEOIP6_URL"),
-		GeoLocUrl:          viper.GetString("GEOLOC_URL"),
-		LicenseNumber:      viper.GetString("LICENSE_NUMBER"),
-		LogLevel:           viper.GetString("LOG_LEVEL"),
-		CustomDownloadUrls: viper.GetStringSlice("CUSTOM_DOWNLOAD_URLS"),
+		ScheduleTime:            viper.GetString("SCHEDULE_TIME"),
+		IDSURL:                  viper.GetString("IDS_URL"),
+		WebFilterAPI:            viper.GetString("WEBFILTER_API"),
+		EnableBitdefender:       viper.GetBool("ENABLE_BITDEFENDER"),
+		DatabasePath:            viper.GetString("DATABASE_PATH"),
+		LogPath:                 viper.GetString("LOG_PATH"),
+		RetryCount:              viper.GetInt("RETRY_COUNT"),
+		RetryDelaySeconds:       viper.GetInt("RETRY_DELAY_SECONDS"),
+		ProxyURL:                viper.GetString("PROXY_URL"),
+		GeoIP4URL:               viper.GetString("GEOIP4_URL"),
+		GeoIP6URL:               viper.GetString("GEOIP6_URL"),
+		GeoLocURL:               viper.GetString("GEOLOC_URL"),
+		LicenseNumber:           viper.GetString("LICENSE_NUMBER"),
+		LogLevel:                viper.GetString("LOG_LEVEL"),
+		CustomDownloadURLs:      viper.GetStringSlice("CUSTOM_DOWNLOAD_URLS"),
 		EnableIDS1:              viper.GetBool("ENABLE_IDS1"),
 		EnableIDS2:              viper.GetBool("ENABLE_IDS2"),
 		EnableIDS3:              viper.GetBool("ENABLE_IDS3"),
@@ -100,19 +101,19 @@ func Load(path string) (*Config, error) {
 func Save(cfg *Config, path string) error {
 	// Set the values in viper from the config struct
 	viper.Set("SCHEDULE_TIME", cfg.ScheduleTime)
-	viper.Set("IDS_URL", cfg.IDSUrl)
-	viper.Set("WEBFILTER_API", cfg.WebFilterApi)
+	viper.Set("IDS_URL", cfg.IDSURL)
+	viper.Set("WEBFILTER_API", cfg.WebFilterAPI)
 	viper.Set("DATABASE_PATH", cfg.DatabasePath)
 	viper.Set("LOG_PATH", cfg.LogPath)
 	viper.Set("RETRY_COUNT", cfg.RetryCount)
 	viper.Set("RETRY_DELAY_SECONDS", cfg.RetryDelaySeconds)
 	viper.Set("PROXY_URL", cfg.ProxyURL)
-	viper.Set("GEOIP4_URL", cfg.GeoIP4Url)
-	viper.Set("GEOIP6_URL", cfg.GeoIP6Url)
-	viper.Set("GEOLOC_URL", cfg.GeoLocUrl)
+	viper.Set("GEOIP4_URL", cfg.GeoIP4URL)
+	viper.Set("GEOIP6_URL", cfg.GeoIP6URL)
+	viper.Set("GEOLOC_URL", cfg.GeoLocURL)
 	viper.Set("LICENSE_NUMBER", cfg.LicenseNumber)
 	viper.Set("LOG_LEVEL", cfg.LogLevel)
-	viper.Set("CUSTOM_DOWNLOAD_URLS", cfg.CustomDownloadUrls)
+	viper.Set("CUSTOM_DOWNLOAD_URLS", cfg.CustomDownloadURLs)
 	viper.Set("ENABLE_BITDEFENDER", cfg.EnableBitdefender)
 	viper.Set("ENABLE_IDS1", cfg.EnableIDS1)
 	viper.Set("ENABLE_IDS2", cfg.EnableIDS2)
@@ -133,7 +134,8 @@ func Save(cfg *Config, path string) error {
 	// Write the config to file
 	if err := viper.WriteConfig(); err != nil {
 		// If the config file doesn't exist, try writing it as a new file
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		var notFoundErr viper.ConfigFileNotFoundError
+		if errors.As(err, &notFoundErr) {
 			err = viper.WriteConfigAs(path)
 			if err != nil {
 				return fmt.Errorf("failed to write config file as %s: %w", path, err)

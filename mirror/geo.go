@@ -24,14 +24,14 @@ import (
 func DownloadAndProcessGeo(url, outputFilename string, modify bool, logger func(string, ...any)) (string, error) {
 	saveDir := "mirror/geo"
 	if err := os.MkdirAll(saveDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create directory: %v", err)
+		return "", fmt.Errorf("failed to create directory: %w", err)
 	}
 	outputPath := filepath.Join(saveDir, outputFilename)
 
 	logger("Downloading file: %s", url)
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", fmt.Errorf("error downloading: %v", err)
+		return "", fmt.Errorf("error downloading: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -43,7 +43,7 @@ func DownloadAndProcessGeo(url, outputFilename string, modify bool, logger func(
 		reader := csv.NewReader(resp.Body)
 		header, err := reader.Read()
 		if err != nil {
-			return "", fmt.Errorf("error reading header: %v", err)
+			return "", fmt.Errorf("error reading header: %w", err)
 		}
 
 		var rows [][]string
@@ -53,7 +53,7 @@ func DownloadAndProcessGeo(url, outputFilename string, modify bool, logger func(
 				break
 			}
 			if err != nil {
-				return "", fmt.Errorf("error reading row: %v", err)
+				return "", fmt.Errorf("error reading row: %w", err)
 			}
 			if len(row) >= 3 {
 				if row[1] != "" {
@@ -68,26 +68,26 @@ func DownloadAndProcessGeo(url, outputFilename string, modify bool, logger func(
 		// Write processed data to the output file
 		f, err := os.Create(outputPath)
 		if err != nil {
-			return "", fmt.Errorf("error creating output file: %v", err)
+			return "", fmt.Errorf("error creating output file: %w", err)
 		}
 		defer f.Close()
 
 		w := csv.NewWriter(f)
 		if err := w.Write(header); err != nil {
-			return "", fmt.Errorf("error writing header: %v", err)
+			return "", fmt.Errorf("error writing header: %w", err)
 		}
 		if err := w.WriteAll(rows); err != nil {
-			return "", fmt.Errorf("error writing rows: %v", err)
+			return "", fmt.Errorf("error writing rows: %w", err)
 		}
 		w.Flush()
 		if err := w.Error(); err != nil {
-			return "", fmt.Errorf("error flushing writer: %v", err)
+			return "", fmt.Errorf("error flushing writer: %w", err)
 		}
 	} else {
 		// Save file without modifications using streaming
 		f, err := os.Create(outputPath)
 		if err != nil {
-			return "", fmt.Errorf("error creating output file: %v", err)
+			return "", fmt.Errorf("error creating output file: %w", err)
 		}
 		defer f.Close()
 
@@ -95,7 +95,7 @@ func DownloadAndProcessGeo(url, outputFilename string, modify bool, logger func(
 		buf := make([]byte, 32*1024) // 32KB buffer
 		_, err = io.CopyBuffer(f, resp.Body, buf)
 		if err != nil {
-			return "", fmt.Errorf("error copying data: %v", err)
+			return "", fmt.Errorf("error copying data: %w", err)
 		}
 	}
 
@@ -140,7 +140,10 @@ func CombineAndCompressGeoFiles(v4Filename, v6Filename string, logger func(strin
 					return err
 				}
 				if len(row) >= 2 {
-					w.Write(row[:2])
+					if err := w.Write(row[:2]); err != nil {
+						f.Close()
+						return err
+					}
 				}
 			}
 			f.Close()
@@ -175,11 +178,11 @@ func CombineAndCompressGeoFiles(v4Filename, v6Filename string, logger func(strin
 
 // UpdateGeoIPDatabases handles downloading, processing, combining, and DB update for GeoIP databases.
 func UpdateGeoIPDatabases(conn *sql.DB, cfg *config.Config, logger *logrus.Logger) {
-	v4Path, err := DownloadAndProcessGeo(cfg.GeoIP4Url, "v4.csv", true, logger.Infof)
+	v4Path, err := DownloadAndProcessGeo(cfg.GeoIP4URL, "v4.csv", true, logger.Infof)
 	if err != nil {
 		logger.Errorf("GeoIP4 download error: %v", err)
 	}
-	v6Path, err := DownloadAndProcessGeo(cfg.GeoIP6Url, "v6.csv", true, logger.Infof)
+	v6Path, err := DownloadAndProcessGeo(cfg.GeoIP6URL, "v6.csv", true, logger.Infof)
 	if err != nil {
 		logger.Errorf("GeoIP6 download error: %v", err)
 	}
@@ -202,7 +205,7 @@ func UpdateGeoIPDatabases(conn *sql.DB, cfg *config.Config, logger *logrus.Logge
 
 // DownloadGeoLocations downloads and processes the locations file if configured.
 func DownloadGeoLocations(cfg *config.Config, logger *logrus.Logger) {
-	_, err := DownloadAndProcessGeo(cfg.GeoLocUrl, "locations.csv", false, logger.Infof)
+	_, err := DownloadAndProcessGeo(cfg.GeoLocURL, "locations.csv", false, logger.Infof)
 	if err != nil {
 		logger.Errorf("GeoLoc download error: %v", err)
 	}

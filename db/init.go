@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 
+	// Import sqlite driver for database/sql
 	_ "modernc.org/sqlite"
 )
 

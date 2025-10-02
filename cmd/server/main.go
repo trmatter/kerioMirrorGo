@@ -1,10 +1,10 @@
 package main
 
 import (
+	"embed"
 	"flag"
 	"log"
 	"sync"
-	"embed"
 
 	"kerio-mirror-go/config"
 	"kerio-mirror-go/db"

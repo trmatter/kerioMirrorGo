@@ -19,3 +19,4 @@ coverage.html
 # Temporary test files
 *_test_*.yaml
 *_test_*.db
+.golangci.yml
