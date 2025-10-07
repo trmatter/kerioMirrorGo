@@ -50,6 +50,12 @@ CREATE TABLE IF NOT EXISTS snort_template (
   last_update_success BOOLEAN DEFAULT 0,
   last_success_update_at DATETIME
 );
+CREATE TABLE IF NOT EXISTS shield_matrix (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  version TEXT,
+  last_update_success BOOLEAN DEFAULT 0,
+  last_success_update_at DATETIME
+);
     `
 	_, err = db.Exec(schema)
 	if err != nil {

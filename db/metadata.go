@@ -174,3 +174,30 @@ func GetSnortTemplateStatus(db *sql.DB) (bool, string, error) {
 	}
 	return success, lastSuccessAt.String, nil
 }
+
+// GetShieldMatrixVersion returns current version for Shield Matrix from DB
+func GetShieldMatrixVersion(db *sql.DB) string {
+	var v sql.NullString
+	err := db.QueryRow(`SELECT version FROM shield_matrix WHERE id = 1`).Scan(&v)
+	if err != nil || !v.Valid {
+		return ""
+	}
+	return v.String
+}
+
+// UpdateShieldMatrixVersion обновляет версию и статус обновления для Shield Matrix
+func UpdateShieldMatrixVersion(db *sql.DB, version string, success bool, lastSuccessAt time.Time) error {
+	_, err := db.Exec(`INSERT OR REPLACE INTO shield_matrix(id, version, last_update_success, last_success_update_at) VALUES(1, ?, ?, ?)`, version, success, lastSuccessAt)
+	return err
+}
+
+// GetShieldMatrixUpdateStatus возвращает статус последнего обновления и дату последнего удачного обновления для Shield Matrix
+func GetShieldMatrixUpdateStatus(db *sql.DB) (bool, string, error) {
+	var success bool
+	var lastSuccessAt sql.NullString
+	err := db.QueryRow(`SELECT last_update_success, last_success_update_at FROM shield_matrix WHERE id = 1`).Scan(&success, &lastSuccessAt)
+	if err != nil {
+		return false, "", err
+	}
+	return success, lastSuccessAt.String, nil
+}

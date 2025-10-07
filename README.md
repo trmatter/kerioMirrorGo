@@ -19,6 +19,8 @@ kerio-mirror-go is a Go application designed to mirror definition files used by 
 - 🌍 **GeoIP Mirroring**: IPv4/IPv6 databases
 - 🦠 **Bitdefender**: Full mirror + proxy mode with caching
 - 🔑 **WebFilter**: License key management
+- 🛡️ **Shield Matrix**: On-demand threat data for Kerio Control 9.5+
+- 📝 **Snort Template**: IPS template updates for Kerio Control 9.5+
 - 📁 **Custom Files**: Mirror any additional URLs
 
 ## Installation
@@ -124,6 +126,10 @@ The application reads its configuration from `config.yaml`. All settings can als
 | `ENABLE_BITDEFENDER` | Enable Bitdefender updates | `true` |
 | `BITDEFENDER_PROXY_MODE` | Enable proxy mode with caching | `false` |
 | `BITDEFENDER_PROXY_BASE_URL` | Upstream URL for proxy mode | `https://upgrade.bitdefender.com` |
+| `ENABLE_SHIELD_MATRIX` | Enable Shield Matrix for Kerio 9.5+ | `true` |
+| `SHIELD_MATRIX_BASE_URL` | CloudFront base URL for Shield Matrix | `https://d2akeya8d016xi.cloudfront.net/9.5.0` |
+| `ENABLE_SNORT_TEMPLATE` | Enable Snort template updates (IDS5) | `true` |
+| `SNORT_TEMPLATE_URL` | Snort template download URL | `http://download.kerio.com/control-update/config/v1/snort.tpl` |
 | `CUSTOM_DOWNLOAD_URLS` | Array of custom URLs to mirror | `[]` |
 | `RETRY_COUNT` | Download retry attempts | `3` |
 | `RETRY_DELAY_SECONDS` | Delay between retries | `10` |
@@ -151,6 +157,14 @@ ENABLE_BITDEFENDER: true
 BITDEFENDER_PROXY_MODE: false
 BITDEFENDER_PROXY_BASE_URL: https://upgrade.bitdefender.com
 BITDEFENDER_URLS: []
+
+# Shield Matrix Settings (Kerio 9.5+)
+ENABLE_SHIELD_MATRIX: true
+SHIELD_MATRIX_BASE_URL: https://d2akeya8d016xi.cloudfront.net/9.5.0
+
+# Snort Template Settings
+ENABLE_SNORT_TEMPLATE: true
+SNORT_TEMPLATE_URL: http://download.kerio.com/control-update/config/v1/snort.tpl
 
 # GeoIP Settings
 GEOIP4_URL: https://raw.githubusercontent.com/wyot1/GeoLite2-Unwalled/downloads/COUNTRY/CSV/GeoLite2-Country-Blocks-IPv4.csv
@@ -194,6 +208,7 @@ Downloaded files are stored in the `mirror/` directory:
 - `mirror/` - IDS files and signatures
 - `mirror/bitdefender/` - Bitdefender databases (or cache if proxy mode)
 - `mirror/geo/` - GeoIP CSV files
+- `mirror/matrix/` - Shield Matrix threat data files (IPv4/IPv6)
 - `mirror/custom/` - Custom downloaded files
 
 ### Bitdefender Proxy Mode
@@ -203,6 +218,28 @@ When `BITDEFENDER_PROXY_MODE: true`, the server acts as a caching proxy:
 2. Responses are cached locally in `mirror/bitdefender/`
 3. Subsequent requests are served from cache
 4. Non-cacheable files (versions.id, version.txt, cumulative.txt) are always fetched fresh
+
+### Shield Matrix (Kerio 9.5+)
+
+Shield Matrix provides advanced threat detection for Kerio Control 9.5 and above:
+
+**How it works:**
+1. **Version Check**: Periodically checks CloudFront for new Shield Matrix version
+2. **On-Demand Download**: Files are downloaded only when Kerio Control requests them
+3. **Caching**: Downloaded files are cached locally for subsequent requests
+4. **File Types**: Supports IPv4 and IPv6 threat data files
+
+**Supported Files:**
+- `ipv4/threat_data_1.dat`, `ipv4/threat_data_2.dat`, ...
+- `ipv6/threat_data_1.dat`, `ipv6/threat_data_2.dat`, ...
+
+**Configuration:**
+```yaml
+ENABLE_SHIELD_MATRIX: true
+SHIELD_MATRIX_BASE_URL: https://d2akeya8d016xi.cloudfront.net/9.5.0
+```
+
+The version number in the URL (9.5.0) corresponds to the Kerio Control version.
 
 ## API Endpoints
 
@@ -240,6 +277,8 @@ kerioMirrorGo/
 │   ├── geo.go
 │   ├── ids.go
 │   ├── mirror.go
+│   ├── shieldmatrix.go  # Shield Matrix (Kerio 9.5+)
+│   ├── snort.go         # Snort template
 │   └── webfilter.go
 ├── utils/               # Utilities (HTTP client, file ops)
 ├── templates/           # HTML templates (embedded)

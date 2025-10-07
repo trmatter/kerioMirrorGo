@@ -45,6 +45,9 @@ func Update(cfg *config.Config, logger *logrus.Logger) {
 		logger.Infof("Bitdefender update is disabled by config.")
 	}
 
+	// Загрузка Shield Matrix
+	UpdateShieldMatrix(conn, cfg, logger)
+
 	// --- Custom Download URLs ---
 	DownloadCustomFiles(cfg, logger)
 	// --- END Custom Download URLs ---

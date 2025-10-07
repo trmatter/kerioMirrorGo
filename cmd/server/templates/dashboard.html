@@ -124,6 +124,22 @@
               </span>
             </li>
           </ul>
+          <h5 class="section-title mb-3"><i class="bi bi-grid-3x3-gap"></i> Shield Matrix Version</h5>
+          <ul class="list-group list-group mb-3 flex-wrap">
+            <li class="list-group-item d-flex align-items-center {{if not .Config.EnableShieldMatrix}}ids-disabled{{end}}">
+              {{if not .ShieldMatrixSuccess}}
+              <span class="badge bg-danger ms-2 ids-badge"><i class="bi bi-x-circle"></i> {{if .ShieldMatrixVersion}}{{.ShieldMatrixVersion}}{{else}}N/A{{end}}</span>
+              {{else if not .ShieldMatrixVersion}}
+              <span class="badge bg-warning ms-2 ids-badge"><i class="bi bi-exclamation-triangle"></i> N/A</span>
+              {{else}}
+              <span class="badge bg-success ms-2 ids-badge"><i class="bi bi-check-circle"></i> {{.ShieldMatrixVersion}}</span>
+              {{end}}
+              <span class="ms-2">
+                <strong>Shield Matrix</strong> <span class="text-muted small">(Kerio 9.5+)</span>
+                {{if not .Config.EnableShieldMatrix}}<span class="ms-2"><i class="bi bi-slash-circle"></i> <span class="small">Отключено</span></span>{{end}}
+              </span>
+            </li>
+          </ul>
         </div>
       </div>
     </div>

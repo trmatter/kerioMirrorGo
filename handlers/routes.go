@@ -33,8 +33,10 @@ type DashboardStatus struct {
 	IDSVersions           map[string]int
 	IDSSuccess            map[string]bool // успешность по каждой IDS
 	BitdefenderVer        int
-	BitdefenderSuccess    bool // успешность Bitdefender
-	SnortTemplateSuccess  bool // успешность Snort Template
+	BitdefenderSuccess    bool   // успешность Bitdefender
+	SnortTemplateSuccess  bool   // успешность Snort Template
+	ShieldMatrixVersion   string // версия Shield Matrix
+	ShieldMatrixSuccess   bool   // успешность Shield Matrix
 	LastUpdate            string
 }
 
@@ -58,6 +60,10 @@ func getDashboardStatus(cfg *config.Config) (*DashboardStatus, error) {
 	// Получаем статус Snort Template
 	snortTemplateSuccess, _, _ := db.GetSnortTemplateStatus(conn)
 
+	// Получаем статус Shield Matrix
+	shieldMatrixVersion := db.GetShieldMatrixVersion(conn)
+	shieldMatrixSuccess, _, _ := db.GetShieldMatrixUpdateStatus(conn)
+
 	// Получаем время последнего обновления из last_update
 	lastUpdateStr, _ := db.GetLastUpdate(conn)
 
@@ -70,6 +76,8 @@ func getDashboardStatus(cfg *config.Config) (*DashboardStatus, error) {
 		BitdefenderVer:       bitdefenderVer,
 		BitdefenderSuccess:   bitdefenderSuccess,
 		SnortTemplateSuccess: snortTemplateSuccess,
+		ShieldMatrixVersion:  shieldMatrixVersion,
+		ShieldMatrixSuccess:  shieldMatrixSuccess,
 		LastUpdate:           lastUpdateStr,
 	}, nil
 }
@@ -90,6 +98,8 @@ func RegisterRoutes(e *echo.Echo, cfg *config.Config, logger *logrus.Logger, emb
 	e.GET("/update", updateHandler(cfg, logger))
 	// Раздать файлы обновлений
 	e.GET("/update.php", updateKerioHandler(cfg, logger))
+	// Shield Matrix update check
+	e.GET("/check_update/", shieldMatrixCheckUpdateHandler(cfg, logger))
 	// Bitdefender or unknown route
 	e.GET("/favicon.ico", func(c echo.Context) error {
 		data, err := embeddedFiles.ReadFile("favicon.ico")
@@ -100,6 +110,8 @@ func RegisterRoutes(e *echo.Echo, cfg *config.Config, logger *logrus.Logger, emb
 	})
 	// New handler for serving files from the update_files directory
 	e.GET("/control-update/*", controlUpdateHandler(logger))
+	// Shield Matrix files
+	e.GET("/matrix/*", matrixHandler(logger))
 	// Static files from embedded filesystem
 	e.GET("/static/*", echo.WrapHandler(http.FileServer(http.FS(embeddedFiles)))) // Serve embedded static files
 	// other routes
@@ -180,6 +192,8 @@ func settingsPageHandler(cfg *config.Config, embeddedFiles embed.FS) echo.Handle
 			cfg.EnableIDS5 = c.FormValue("EnableIDS5") == "true"
 			cfg.EnableSnortTemplate = c.FormValue("EnableSnortTemplate") == "true"
 			cfg.SnortTemplateURL = c.FormValue("SnortTemplateURL")
+			cfg.EnableShieldMatrix = c.FormValue("EnableShieldMatrix") == "true"
+			cfg.ShieldMatrixBaseURL = c.FormValue("ShieldMatrixBaseURL")
 			msg := "Настройки успешно обновлены!"
 
 			// Get config path from context
@@ -334,6 +348,26 @@ func updateKerioHandler(cfg *config.Config, logger *logrus.Logger) echo.HandlerF
 		switch majorVersion {
 		case 0:
 			return c.String(http.StatusOK, "0:0.0")
+		case 6, 7, 8:
+			// Shield Matrix для Kerio 9.5+ (версии 6, 7, 8 в update.php)
+			// Возвращаем информацию о Shield Matrix
+			conn, err := sql.Open("sqlite", cfg.DatabasePath)
+			if err != nil {
+				logger.Errorf("Failed to open database: %v", err)
+				return c.String(http.StatusInternalServerError, "500 Internal Server Error")
+			}
+			defer conn.Close()
+
+			shieldMatrixVersion := db.GetShieldMatrixVersion(conn)
+			if shieldMatrixVersion == "" {
+				logger.Warnf("Shield Matrix version not found in database for version %s", version)
+				return c.String(http.StatusOK, "0:0.0")
+			}
+			// Формат ответа для Shield Matrix
+			// Kerio Control будет загружать файлы из указанного URL
+			response := fmt.Sprintf("0:%s\nmatrix:http://%s/matrix/", shieldMatrixVersion, c.Request().Host)
+			logger.Infof("Responding to Shield Matrix request for version %s: %s", version, response)
+			return c.String(http.StatusOK, response)
 		case 9, 10:
 			// Если включен режим прокси Bitdefender, перенаправляем клиента на наш сервер
 			if cfg.BitdefenderProxyMode {
@@ -403,6 +437,53 @@ func webFilterKeyHandler(cfg *config.Config) echo.HandlerFunc {
 			return c.String(http.StatusNotFound, "404 Not found")
 		}
 		return c.String(http.StatusOK, key)
+	}
+}
+
+// Handler for Shield Matrix update check endpoint
+func shieldMatrixCheckUpdateHandler(cfg *config.Config, logger *logrus.Logger) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		logger.Debugf("=== Shield Matrix Check Update ===")
+		logger.Debugf("Method: %s", c.Request().Method)
+		logger.Debugf("Full URL: %s", c.Request().URL.String())
+		logger.Debugf("Host: %s", c.Request().Host)
+		logger.Debugf("User-Agent: %s", c.Request().UserAgent())
+
+		logger.Infof("Shield Matrix check update: %s from %s", c.Request().URL.Path, c.RealIP())
+
+		// Получаем параметры запроса
+		clientID := c.QueryParam("client-id")
+		version := c.QueryParam("version")
+		lastUpdate := c.QueryParam("last-update")
+
+		logger.Debugf("Shield Matrix: client-id=%s, version=%s, last-update=%s", clientID, version, lastUpdate)
+
+		// Проверяем что Shield Matrix включен
+		if !cfg.EnableShieldMatrix {
+			logger.Warn("Shield Matrix: update check received but Shield Matrix is disabled")
+			return c.String(http.StatusOK, "0")
+		}
+
+		// Открываем соединение с БД
+		conn, err := sql.Open("sqlite", cfg.DatabasePath)
+		if err != nil {
+			logger.Errorf("Shield Matrix: failed to open database: %v", err)
+			return c.String(http.StatusInternalServerError, "500 Internal Server Error")
+		}
+		defer conn.Close()
+
+		// Получаем текущую версию Shield Matrix из БД
+		currentVersion := db.GetShieldMatrixVersion(conn)
+		logger.Infof("Shield Matrix: current version in DB: '%s'", currentVersion)
+
+		// Возвращаем текущую версию
+		if currentVersion == "" {
+			logger.Warn("Shield Matrix: no version in database, returning 0")
+			return c.String(http.StatusOK, "0")
+		}
+
+		logger.Infof("Shield Matrix: responding with version: %s", currentVersion)
+		return c.String(http.StatusOK, currentVersion)
 	}
 }
 
@@ -518,6 +599,89 @@ func controlUpdateHandler(logger *logrus.Logger) echo.HandlerFunc {
 
 		// Serve the file
 		logger.Infof("Serving file from control-update: %s", localPath)
+		return c.File(localPath)
+	}
+}
+
+// Handler for serving Shield Matrix files (on-demand download)
+func matrixHandler(logger *logrus.Logger) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		logger.Debugf("=== Shield Matrix Handler ===")
+		logger.Debugf("Method: %s", c.Request().Method)
+		logger.Debugf("Full URL: %s", c.Request().URL.String())
+		logger.Debugf("Path: %s", c.Request().URL.Path)
+		logger.Debugf("Host: %s", c.Request().Host)
+		logger.Debugf("User-Agent: %s", c.Request().UserAgent())
+
+		logger.Infof("Shield Matrix request: %s %s from %s", c.Request().Method, c.Request().URL.Path, c.RealIP())
+
+		// Get the requested file path after /matrix/
+		filePath := c.Param("*")
+		logger.Debugf("Shield Matrix: requested subpath: '%s'", filePath)
+
+		if filePath == "" {
+			logger.Warnf("Shield Matrix handler: missing file path in request %s", c.Request().URL.Path)
+			return c.String(http.StatusBadRequest, "400 Bad Request")
+		}
+
+		// Validate that this is a threat_data file request
+		if !strings.Contains(filePath, "ipv4/threat_data") && !strings.Contains(filePath, "ipv6/threat_data") {
+			logger.Warnf("Shield Matrix handler: invalid file request (not threat_data): %s", filePath)
+			return c.String(http.StatusNotFound, "404 Not found")
+		}
+
+		// Build local path: mirror/matrix/{ipv4|ipv6}/...
+		localPath := filepath.Join("mirror", "matrix", filepath.Clean(filePath))
+		logger.Debugf("Shield Matrix: local path to check: %s", localPath)
+
+		// Prevent directory traversal attacks
+		absBase, err := filepath.Abs("mirror/matrix")
+		if err != nil {
+			logger.Errorf("Shield Matrix handler: failed to get absolute path for matrix dir: %v", err)
+			return c.String(http.StatusInternalServerError, "500 Internal Server Error")
+		}
+		absFile, err := filepath.Abs(localPath)
+		if err != nil {
+			logger.Errorf("Shield Matrix handler: failed to get absolute path for requested file %s: %v", localPath, err)
+			return c.String(http.StatusInternalServerError, "500 Internal Server Error")
+		}
+
+		if !strings.HasPrefix(absFile, absBase) {
+			logger.Warnf("Shield Matrix handler: path traversal attempt: %s", filePath)
+			return c.String(http.StatusForbidden, "403 Forbidden")
+		}
+
+		// Check if file exists, if not - download it on-demand
+		fileInfo, err := os.Stat(localPath)
+		if err != nil {
+			logger.Infof("Shield Matrix: file not found locally (%s), initiating on-demand download", filePath)
+			logger.Debugf("Shield Matrix: stat error: %v", err)
+
+			// Get config from context
+			cfg, ok := c.Get("config").(*config.Config)
+			if !ok {
+				logger.Error("Shield Matrix handler: config not found in context")
+				return c.String(http.StatusInternalServerError, "500 Internal Server Error")
+			}
+
+			// Download the file
+			if err := mirror.DownloadShieldMatrixFile(filePath, cfg, logger); err != nil {
+				logger.Errorf("Shield Matrix handler: failed to download file %s: %v", filePath, err)
+				return c.String(http.StatusNotFound, "404 Not found")
+			}
+
+			// Re-stat the file to get size
+			fileInfo, _ = os.Stat(localPath)
+		} else {
+			logger.Debugf("Shield Matrix: file found in cache: %s (%d bytes)", localPath, fileInfo.Size())
+		}
+
+		// Serve the file
+		var fileSize int64
+		if fileInfo != nil {
+			fileSize = fileInfo.Size()
+		}
+		logger.Infof("Shield Matrix: serving file %s (%d bytes) to %s", filePath, fileSize, c.RealIP())
 		return c.File(localPath)
 	}
 }

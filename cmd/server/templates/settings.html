@@ -192,6 +192,20 @@
         </div>
 
         <div class="section-card">
+          <div class="section-title"><i class="bi bi-grid-3x3-gap"></i> Shield Matrix (Kerio 9.5+)</div>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="EnableShieldMatrix" name="EnableShieldMatrix" value="true" {{if .Config.EnableShieldMatrix}}checked{{end}}>
+            <label class="form-check-label" for="EnableShieldMatrix">Enable Shield Matrix</label>
+            <div class="form-text">Shield Matrix for Kerio Control 9.5 and above</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Shield Matrix Base URL</label>
+            <input type="text" class="form-control" name="ShieldMatrixBaseURL" value="{{.Config.ShieldMatrixBaseURL}}" placeholder="https://d2akeya8d016xi.cloudfront.net/9.5.0">
+            <div class="form-text">Base URL for Shield Matrix (CloudFront endpoint, without /version)</div>
+          </div>
+        </div>
+
+        <div class="section-card">
           <div class="section-title"><i class="bi bi-folder2-open"></i> Paths</div>
           <div class="mb-3">
             <label class="form-label">Database Path</label>
