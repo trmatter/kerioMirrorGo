@@ -157,3 +157,20 @@ func UpdateBitdefenderUpdateStatus(db *sql.DB, success bool, lastSuccessAt time.
 	_, err := db.Exec(`UPDATE bitdefender SET last_update_success = ?, last_success_update_at = ? WHERE id = 1`, success, lastSuccessAt)
 	return err
 }
+
+// UpdateSnortTemplateStatus обновляет статус последнего обновления Snort template
+func UpdateSnortTemplateStatus(db *sql.DB, success bool, lastSuccessAt time.Time) error {
+	_, err := db.Exec(`INSERT OR REPLACE INTO snort_template(id, last_update_success, last_success_update_at) VALUES(1, ?, ?)`, success, lastSuccessAt)
+	return err
+}
+
+// GetSnortTemplateStatus возвращает статус последнего обновления и дату последнего удачного обновления для Snort template
+func GetSnortTemplateStatus(db *sql.DB) (bool, string, error) {
+	var success bool
+	var lastSuccessAt sql.NullString
+	err := db.QueryRow(`SELECT last_update_success, last_success_update_at FROM snort_template WHERE id = 1`).Scan(&success, &lastSuccessAt)
+	if err != nil {
+		return false, "", err
+	}
+	return success, lastSuccessAt.String, nil
+}

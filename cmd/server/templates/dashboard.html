@@ -88,6 +88,10 @@
                   {{else if eq $k "3"}}IPS/IDS Snort (версия для Linux до 9.5)
                   {{else if eq $k "4"}}Базы данных GeoIP
                   {{else if eq $k "5"}}IPS/IDS Snort (версия для Linux с 9.5)
+                    {{if $.Config.EnableSnortTemplate}}
+                      + Snort Template
+                      {{if not $.SnortTemplateSuccess}}<i class="bi bi-exclamation-triangle text-warning" title="Snort template update failed"></i>{{end}}
+                    {{end}}
                   {{end}}
                   {{if not $enabled}}<span class="ms-2"><i class="bi bi-slash-circle"></i> <span class="small">Отключено</span></span>{{end}}
                 </span>

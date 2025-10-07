@@ -127,6 +127,13 @@ func DownloadAndUpdateIDS(conn *sql.DB, cfg *config.Config, logger *logrus.Logge
 		}
 		logger.Infof("IDSv%s: downloaded new version - %d", version, remoteVersion)
 
+		// For IDS5, also download Snort template (used by Kerio 9.5 IPS)
+		if version == "5" {
+			if !downloadSnortTemplate(conn, cfg, logger) {
+				logger.Warn("IDSv5: failed to download Snort template, but IDS5 update succeeded")
+			}
+		}
+
 		// Cleanup old files for this version
 		oldFiles, err := db.GetOldIDSFiles(conn, version)
 		if err != nil {

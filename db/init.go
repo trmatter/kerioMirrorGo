@@ -45,6 +45,11 @@ CREATE TABLE IF NOT EXISTS last_update (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   updated_at DATETIME
 );
+CREATE TABLE IF NOT EXISTS snort_template (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  last_update_success BOOLEAN DEFAULT 0,
+  last_success_update_at DATETIME
+);
     `
 	_, err = db.Exec(schema)
 	if err != nil {

@@ -26,14 +26,15 @@ import (
 
 // DashboardStatus holds info for the dashboard page
 type DashboardStatus struct {
-	ServiceName        string
-	CurrentTime        string
-	Config             *config.Config
-	IDSVersions        map[string]int
-	IDSSuccess         map[string]bool // успешность по каждой IDS
-	BitdefenderVer     int
-	BitdefenderSuccess bool // успешность Bitdefender
-	LastUpdate         string
+	ServiceName           string
+	CurrentTime           string
+	Config                *config.Config
+	IDSVersions           map[string]int
+	IDSSuccess            map[string]bool // успешность по каждой IDS
+	BitdefenderVer        int
+	BitdefenderSuccess    bool // успешность Bitdefender
+	SnortTemplateSuccess  bool // успешность Snort Template
+	LastUpdate            string
 }
 
 func getDashboardStatus(cfg *config.Config) (*DashboardStatus, error) {
@@ -53,18 +54,22 @@ func getDashboardStatus(cfg *config.Config) (*DashboardStatus, error) {
 	bitdefenderVer := db.GetBitdefenderVersion(conn)
 	bitdefenderSuccess, _, _ := db.GetBitdefenderUpdateStatus(conn)
 
+	// Получаем статус Snort Template
+	snortTemplateSuccess, _, _ := db.GetSnortTemplateStatus(conn)
+
 	// Получаем время последнего обновления из last_update
 	lastUpdateStr, _ := db.GetLastUpdate(conn)
 
 	return &DashboardStatus{
-		ServiceName:        "Kerio Mirror Go",
-		CurrentTime:        time.Now().Format("2006-01-02 15:04:05 MST"),
-		Config:             cfg,
-		IDSVersions:        idsVersions,
-		IDSSuccess:         idsSuccess,
-		BitdefenderVer:     bitdefenderVer,
-		BitdefenderSuccess: bitdefenderSuccess,
-		LastUpdate:         lastUpdateStr,
+		ServiceName:          "Kerio Mirror Go",
+		CurrentTime:          time.Now().Format("2006-01-02 15:04:05 MST"),
+		Config:               cfg,
+		IDSVersions:          idsVersions,
+		IDSSuccess:           idsSuccess,
+		BitdefenderVer:       bitdefenderVer,
+		BitdefenderSuccess:   bitdefenderSuccess,
+		SnortTemplateSuccess: snortTemplateSuccess,
+		LastUpdate:           lastUpdateStr,
 	}, nil
 }
 
@@ -171,6 +176,8 @@ func settingsPageHandler(cfg *config.Config, embeddedFiles embed.FS) echo.Handle
 			cfg.EnableIDS3 = c.FormValue("EnableIDS3") == "true"
 			cfg.EnableIDS4 = c.FormValue("EnableIDS4") == "true"
 			cfg.EnableIDS5 = c.FormValue("EnableIDS5") == "true"
+			cfg.EnableSnortTemplate = c.FormValue("EnableSnortTemplate") == "true"
+			cfg.SnortTemplateURL = c.FormValue("SnortTemplateURL")
 			msg := "Настройки успешно обновлены!"
 
 			// Get config path from context
@@ -284,7 +291,20 @@ func updateHandler(cfg *config.Config, logger *logrus.Logger) echo.HandlerFunc {
 
 func updateKerioHandler(cfg *config.Config, logger *logrus.Logger) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		// Debug logging: full request details
+		logger.Debugf("=== Update.php Request ===")
+		logger.Debugf("Method: %s", c.Request().Method)
+		logger.Debugf("Full URL: %s", c.Request().URL.String())
+		logger.Debugf("Path: %s", c.Request().URL.Path)
+		logger.Debugf("RawQuery: %s", c.Request().URL.RawQuery)
+		logger.Debugf("Host: %s", c.Request().Host)
+		logger.Debugf("RemoteAddr: %s", c.Request().RemoteAddr)
+		logger.Debugf("RealIP: %s", c.RealIP())
+		logger.Debugf("User-Agent: %s", c.Request().UserAgent())
+
 		version := c.QueryParam("version")
+		logger.Debugf("Version param: %s", version)
+
 		if version == "" {
 			logger.Errorf("Error processing URL %s in update request", c.Request().URL.String())
 			return c.String(http.StatusBadRequest, "")
@@ -384,6 +404,15 @@ func webFilterKeyHandler(cfg *config.Config) echo.HandlerFunc {
 // Универсальный обработчик: если host Bitdefender — раздаём базу или работаем как прокси, иначе unknown
 func bitdefenderOrUnknownHandler(cfg *config.Config, logger *logrus.Logger) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		// Debug logging for unknown routes
+		logger.Debugf("=== Bitdefender/Unknown Handler ===")
+		logger.Debugf("Method: %s", c.Request().Method)
+		logger.Debugf("Full URL: %s", c.Request().URL.String())
+		logger.Debugf("Path: %s", c.Request().URL.Path)
+		logger.Debugf("Host: %s", c.Request().Host)
+		logger.Debugf("RemoteAddr: %s", c.Request().RemoteAddr)
+		logger.Debugf("RealIP: %s", c.RealIP())
+
 		host := c.Request().Host
 		if strings.Contains(host, "bdupdate.kerio.com") || strings.Contains(host, "bda-update.kerio.com") {
 			// Если включен режим прокси, используем прокси-обработчик
@@ -421,22 +450,54 @@ func bitdefenderOrUnknownHandler(cfg *config.Config, logger *logrus.Logger) echo
 // Handler for serving files from the update_files directory
 func controlUpdateHandler(logger *logrus.Logger) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		// Debug logging: full request details
+		logger.Debugf("=== Control Update Request ===")
+		logger.Debugf("Method: %s", c.Request().Method)
+		logger.Debugf("Full URL: %s", c.Request().URL.String())
+		logger.Debugf("Path: %s", c.Request().URL.Path)
+		logger.Debugf("RawQuery: %s", c.Request().URL.RawQuery)
+		logger.Debugf("Host: %s", c.Request().Host)
+		logger.Debugf("RemoteAddr: %s", c.Request().RemoteAddr)
+		logger.Debugf("RealIP: %s", c.RealIP())
+		logger.Debugf("User-Agent: %s", c.Request().UserAgent())
+
 		logger.Infof("Web access: %s %s from %s", c.Request().Method, c.Request().URL.Path, c.RealIP())
 
 		// Get the requested file path after /control-update/
 		filePath := c.Param("*")
+		logger.Debugf("Param('*'): %s", filePath)
+
 		if filePath == "" {
 			logger.Warnf("Control update handler: missing file path in request %s", c.Request().URL.Path)
 			return c.String(http.StatusBadRequest, "400 Bad Request")
 		}
 
-		// Construct the full path to the file within the mirror directory
-		localPath := filepath.Join("mirror", filepath.Clean(filePath))
+		// Try to find file in two locations:
+		// 1. mirror/custom/control-update/ (for custom files like snort.tpl)
+		// 2. mirror/ (for IDS files)
+
+		customPath := filepath.Join("mirror", "custom", "control-update", filepath.Clean(filePath))
+		directPath := filepath.Join("mirror", filepath.Clean(filePath))
+
+		logger.Debugf("Checking custom path: %s", customPath)
+		logger.Debugf("Checking direct path: %s", directPath)
+
+		var localPath string
+		if _, err := os.Stat(customPath); err == nil {
+			localPath = customPath
+			logger.Debugf("File found at custom path: %s", customPath)
+		} else if _, err := os.Stat(directPath); err == nil {
+			localPath = directPath
+			logger.Debugf("File found at direct path: %s", directPath)
+		} else {
+			logger.Warnf("Control update handler: file not found: %s (tried %s and %s)", filePath, customPath, directPath)
+			return c.String(http.StatusNotFound, "404 Not found")
+		}
 
 		// Prevent directory traversal attacks
 		absBase, err := filepath.Abs("mirror")
 		if err != nil {
-			logger.Errorf("Control update handler: failed to get absolute path for update_files: %v", err)
+			logger.Errorf("Control update handler: failed to get absolute path for mirror: %v", err)
 			return c.String(http.StatusInternalServerError, "500 Internal Server Error")
 		}
 		absFile, err := filepath.Abs(localPath)
@@ -451,7 +512,7 @@ func controlUpdateHandler(logger *logrus.Logger) echo.HandlerFunc {
 		}
 
 		// Serve the file
-		logger.Infof("Serving file from update_files: %s", localPath)
+		logger.Infof("Serving file from control-update: %s", localPath)
 		return c.File(localPath)
 	}
 }
@@ -460,6 +521,15 @@ func controlUpdateHandler(logger *logrus.Logger) echo.HandlerFunc {
 func customFilesHandlerOrFallback(cfg *config.Config, logger *logrus.Logger) echo.HandlerFunc {
 	fallback := bitdefenderOrUnknownHandler(cfg, logger)
 	return func(c echo.Context) error {
+		// Debug logging
+		logger.Debugf("=== Custom Files Handler ===")
+		logger.Debugf("Method: %s", c.Request().Method)
+		logger.Debugf("Full URL: %s", c.Request().URL.String())
+		logger.Debugf("Path: %s", c.Request().URL.Path)
+		logger.Debugf("Host: %s", c.Request().Host)
+		logger.Debugf("RemoteAddr: %s", c.Request().RemoteAddr)
+		logger.Debugf("RealIP: %s", c.RealIP())
+
 		logger.Infof("Web access: %s %s from %s", c.Request().Method, c.Request().URL.Path, c.RealIP())
 		urlPath := c.Request().URL.Path
 		if urlPath == "" || urlPath == "/" {
