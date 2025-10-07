@@ -184,6 +184,36 @@ RETRY_DELAY_SECONDS: 10
 
 ## Usage
 
+### DNS Configuration
+
+To use the mirror server, configure your DNS server to point the following hostnames to your mirror server IP:
+
+**Required DNS entries:**
+- `ids-update.kerio.com` → Your mirror server IP
+- `update.kerio.com` → Your mirror server IP
+- `updates.kerio.com` → Your mirror server IP
+- `download.kerio.com` → Your mirror server IP
+
+**For Bitdefender (if enabled):**
+- `bdupdate.kerio.com` → Your mirror server IP
+- `bda-update.kerio.com` → Your mirror server IP
+
+**For Shield Matrix (Kerio 9.5+):**
+- `shieldmatrix-updates.gfikeriocontrol.com` → Your mirror server IP
+
+**Example DNS configuration:**
+```
+ids-update.kerio.com.        IN A    192.168.1.100
+update.kerio.com.            IN A    192.168.1.100
+updates.kerio.com.           IN A    192.168.1.100
+download.kerio.com.          IN A    192.168.1.100
+bdupdate.kerio.com.          IN A    192.168.1.100
+bda-update.kerio.com.        IN A    192.168.1.100
+shieldmatrix-updates.gfikeriocontrol.com. IN A 192.168.1.100
+```
+
+Replace `192.168.1.100` with your actual mirror server IP address.
+
 ### Web Dashboard
 
 Access the web interface at `http://localhost/` (or `https://localhost/` if HTTPS is configured with `cert.pem` and `key.pem`).
