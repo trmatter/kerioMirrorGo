@@ -51,3 +51,25 @@ func NewLogger(logPath string, logLevel string) *logrus.Logger {
 
 	return logger
 }
+
+// UpdateLogLevel updates the log level of an existing logger
+func UpdateLogLevel(logger *logrus.Logger, logLevel string) {
+	logLevel = strings.ToLower(logLevel)
+	switch logLevel {
+	case "debug":
+		logger.SetLevel(logrus.DebugLevel)
+	case "info":
+		logger.SetLevel(logrus.InfoLevel)
+	case "warn":
+		logger.SetLevel(logrus.WarnLevel)
+	case "error":
+		logger.SetLevel(logrus.ErrorLevel)
+	case "fatal":
+		logger.SetLevel(logrus.FatalLevel)
+	case "panic":
+		logger.SetLevel(logrus.PanicLevel)
+	default:
+		logger.SetLevel(logrus.InfoLevel)
+	}
+	logger.Infof("Log level updated to: %s", logLevel)
+}

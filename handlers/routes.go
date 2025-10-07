@@ -12,6 +12,7 @@ import (
 
 	"kerio-mirror-go/config"
 	"kerio-mirror-go/db"
+	"kerio-mirror-go/logging"
 	"kerio-mirror-go/mirror"
 
 	"database/sql"
@@ -148,6 +149,7 @@ func settingsPageHandler(cfg *config.Config, embeddedFiles embed.FS) echo.Handle
 			cfg.GeoLocURL = c.FormValue("GeoLocUrl")
 			cfg.RetryCount, _ = strconv.Atoi(c.FormValue("RetryCount"))
 			cfg.RetryDelaySeconds, _ = strconv.Atoi(c.FormValue("RetryDelaySeconds"))
+			cfg.LogLevel = c.FormValue("LogLevel")
 			cfg.IDSURL = c.FormValue("IDSUrl")
 			bitdefUrlsRaw := c.FormValue("BitdefenderUrls")
 			cfg.BitdefenderURLs = nil
@@ -192,6 +194,9 @@ func settingsPageHandler(cfg *config.Config, embeddedFiles embed.FS) echo.Handle
 				logger.Errorf("Failed to save config: %v", err)
 				return c.String(http.StatusInternalServerError, "Failed to save config")
 			}
+
+			// Update logger level if it was changed
+			logging.UpdateLogLevel(logger, cfg.LogLevel)
 
 			t, err := template.ParseFS(embeddedFiles, "templates/settings.html")
 			if err != nil {

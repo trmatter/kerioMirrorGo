@@ -71,6 +71,16 @@
             <input type="number" class="form-control" name="RetryDelaySeconds" value="{{.Config.RetryDelaySeconds}}">
             <div class="form-text">Delay between retries (seconds).</div>
           </div>
+          <div class="mb-3">
+            <label class="form-label">Log Level</label>
+            <select class="form-select" name="LogLevel">
+              <option value="debug" {{if eq .Config.LogLevel "debug"}}selected{{end}}>Debug - Detailed diagnostic information</option>
+              <option value="info" {{if eq .Config.LogLevel "info"}}selected{{end}}>Info - General informational messages</option>
+              <option value="warn" {{if eq .Config.LogLevel "warn"}}selected{{end}}>Warning - Warning messages only</option>
+              <option value="error" {{if eq .Config.LogLevel "error"}}selected{{end}}>Error - Error messages only</option>
+            </select>
+            <div class="form-text">Set logging verbosity level. Debug shows all requests details, Info shows general operations.</div>
+          </div>
         </div>
 
         <div class="section-card">
