@@ -88,21 +88,21 @@
           <div class="mb-3">
             <label class="form-label">Bitdefender Mode</label>
             <div class="form-check">
-              <input class="form-check-input" type="radio" id="BitdefenderDisabled" name="BitdefenderMode" value="disabled" {{if and (not .Config.EnableBitdefender) (not .Config.BitdefenderProxyMode)}}checked{{end}}>
+              <input class="form-check-input" type="radio" id="BitdefenderDisabled" name="BitdefenderMode" value="disabled" {{if eq .Config.BitdefenderMode "disabled"}}checked{{end}}>
               <label class="form-check-label" for="BitdefenderDisabled">
                 Disabled
               </label>
               <div class="form-text">Bitdefender functionality is disabled.</div>
             </div>
             <div class="form-check mt-2">
-              <input class="form-check-input" type="radio" id="BitdefenderUpdates" name="BitdefenderMode" value="updates" {{if .Config.EnableBitdefender}}checked{{end}}>
-              <label class="form-check-label" for="BitdefenderUpdates">
-                Update Mode
+              <input class="form-check-input" type="radio" id="BitdefenderMirror" name="BitdefenderMode" value="mirror" {{if eq .Config.BitdefenderMode "mirror"}}checked{{end}}>
+              <label class="form-check-label" for="BitdefenderMirror">
+                Mirror Mode
               </label>
               <div class="form-text">Enable scheduled download of Bitdefender databases.</div>
             </div>
             <div class="form-check mt-2">
-              <input class="form-check-input" type="radio" id="BitdefenderProxy" name="BitdefenderMode" value="proxy" {{if .Config.BitdefenderProxyMode}}checked{{end}}>
+              <input class="form-check-input" type="radio" id="BitdefenderProxy" name="BitdefenderMode" value="proxy" {{if eq .Config.BitdefenderMode "proxy"}}checked{{end}}>
               <label class="form-check-label" for="BitdefenderProxy">
                 Proxy Mode
               </label>

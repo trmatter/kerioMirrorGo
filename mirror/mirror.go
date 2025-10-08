@@ -33,10 +33,10 @@ func Update(cfg *config.Config, logger *logrus.Logger) {
 	// Загрузка баз WebFilter
 	UpdateWebFilterKey(conn, cfg, logger)
 	// Загрузка баз Bitdefender
-	if cfg.EnableBitdefender {
+	if cfg.BitdefenderMode == "mirror" {
 		downloadAndStoreBitdefender(conn, cfg.BitdefenderURLs, "mirror/bitdefender", cfg, logger)
 	} else {
-		logger.Infof("Bitdefender update is disabled by config.")
+		logger.Infof("Bitdefender mirror mode is disabled by config (current mode: %s).", cfg.BitdefenderMode)
 	}
 
 	// Загрузка Shield Matrix

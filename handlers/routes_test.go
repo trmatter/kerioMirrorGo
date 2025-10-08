@@ -50,8 +50,8 @@ func TestUpdateKerioHandler_Version9_ProxyDisabled(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	cfg := &config.Config{
-		DatabasePath:         ":memory:",
-		BitdefenderProxyMode: false,
+		DatabasePath:    ":memory:",
+		BitdefenderMode: "disabled",
 	}
 	logger := logrus.New()
 
@@ -82,8 +82,8 @@ func TestUpdateKerioHandler_Version9_ProxyEnabled(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	cfg := &config.Config{
-		DatabasePath:         ":memory:",
-		BitdefenderProxyMode: true,
+		DatabasePath:    ":memory:",
+		BitdefenderMode: "proxy",
 	}
 	logger := logrus.New()
 
@@ -114,8 +114,8 @@ func TestUpdateKerioHandler_Version10_ProxyEnabled(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	cfg := &config.Config{
-		DatabasePath:         ":memory:",
-		BitdefenderProxyMode: true,
+		DatabasePath:    ":memory:",
+		BitdefenderMode: "proxy",
 	}
 	logger := logrus.New()
 

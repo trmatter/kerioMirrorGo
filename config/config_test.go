@@ -20,8 +20,7 @@ database_path: "./test.db"
 log_path: "./test.log"
 proxy_url: "http://proxy.test:8080"
 license_number: "TEST-1234"
-enable_bitdefender: true
-bitdefender_proxy_mode: true
+bitdefender_mode: "proxy"
 bitdefender_proxy_base_url: "https://test.bitdefender.com"
 `
 	if _, err := tmpFile.Write([]byte(configContent)); err != nil {
@@ -45,11 +44,8 @@ bitdefender_proxy_base_url: "https://test.bitdefender.com"
 	if cfg.ProxyURL != "http://proxy.test:8080" {
 		t.Errorf("Expected ProxyURL 'http://proxy.test:8080', got '%s'", cfg.ProxyURL)
 	}
-	if !cfg.EnableBitdefender {
-		t.Error("Expected EnableBitdefender to be true")
-	}
-	if !cfg.BitdefenderProxyMode {
-		t.Error("Expected BitdefenderProxyMode to be true")
+	if cfg.BitdefenderMode != "proxy" {
+		t.Errorf("Expected BitdefenderMode 'proxy', got '%s'", cfg.BitdefenderMode)
 	}
 	if cfg.BitdefenderProxyBaseURL != "https://test.bitdefender.com" {
 		t.Errorf("Expected BitdefenderProxyBaseURL 'https://test.bitdefender.com', got '%s'", cfg.BitdefenderProxyBaseURL)
@@ -81,8 +77,8 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.BitdefenderProxyBaseURL != "https://upgrade.bitdefender.com" {
 		t.Errorf("Expected default BitdefenderProxyBaseURL 'https://upgrade.bitdefender.com', got '%s'", cfg.BitdefenderProxyBaseURL)
 	}
-	if cfg.BitdefenderProxyMode != false {
-		t.Error("Expected default BitdefenderProxyMode to be false")
+	if cfg.BitdefenderMode != "disabled" {
+		t.Errorf("Expected default BitdefenderMode 'disabled', got '%s'", cfg.BitdefenderMode)
 	}
 }
 
@@ -102,8 +98,7 @@ func TestSaveAndLoad(t *testing.T) {
 		LogPath:                 "./save_test.log",
 		ProxyURL:                "http://save.test:3128",
 		LicenseNumber:           "SAVE-TEST-5678",
-		EnableBitdefender:       true,
-		BitdefenderProxyMode:    true,
+		BitdefenderMode:         "mirror",
 		BitdefenderProxyBaseURL: "https://save.bitdefender.com",
 		RetryCount:              5,
 		EnableIDS1:              true,
@@ -128,8 +123,8 @@ func TestSaveAndLoad(t *testing.T) {
 	if loadedCfg.ProxyURL != cfg.ProxyURL {
 		t.Errorf("ProxyURL mismatch: expected '%s', got '%s'", cfg.ProxyURL, loadedCfg.ProxyURL)
 	}
-	if loadedCfg.BitdefenderProxyMode != cfg.BitdefenderProxyMode {
-		t.Errorf("BitdefenderProxyMode mismatch: expected %v, got %v", cfg.BitdefenderProxyMode, loadedCfg.BitdefenderProxyMode)
+	if loadedCfg.BitdefenderMode != cfg.BitdefenderMode {
+		t.Errorf("BitdefenderMode mismatch: expected '%s', got '%s'", cfg.BitdefenderMode, loadedCfg.BitdefenderMode)
 	}
 	if loadedCfg.EnableIDS1 != cfg.EnableIDS1 {
 		t.Errorf("EnableIDS1 mismatch: expected %v, got %v", cfg.EnableIDS1, loadedCfg.EnableIDS1)

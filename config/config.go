@@ -13,7 +13,7 @@ type Config struct {
 	IDSURL                  string
 	WebFilterAPI            string
 	BitdefenderURLs         []string
-	EnableBitdefender       bool // Включить обновление Bitdefender
+	BitdefenderMode         string   // Режим Bitdefender: "disabled", "mirror", "proxy"
 	DatabasePath            string
 	LogPath                 string
 	RetryCount              int
@@ -30,7 +30,6 @@ type Config struct {
 	EnableIDS3              bool     // Включить обновление IDS3
 	EnableIDS4              bool     // Включить обновление IDS4
 	EnableIDS5              bool     // Включить обновление IDS5
-	BitdefenderProxyMode    bool     // Режим прокси для Bitdefender (запросы передаются на сервер и кэшируются)
 	BitdefenderProxyBaseURL string   // Базовый URL для прокси Bitdefender
 	EnableSnortTemplate      bool   // Включить обновление шаблона Snort для IPS
 	SnortTemplateURL         string // URL для скачивания snort.tpl
@@ -69,13 +68,12 @@ func Load(path string) (*Config, error) {
 		"http://download.kerio.com/control-update/config/v1/snort.tpl",
 		"http://download.kerio.com/control-update/config/v1/snort.tpl.md5",
 	})
-	viper.SetDefault("ENABLE_BITDEFENDER", true)
+	viper.SetDefault("BITDEFENDER_MODE", "disabled")
 	viper.SetDefault("ENABLE_IDS1", true)
 	viper.SetDefault("ENABLE_IDS2", true)
 	viper.SetDefault("ENABLE_IDS3", true)
 	viper.SetDefault("ENABLE_IDS4", true)
 	viper.SetDefault("ENABLE_IDS5", true)
-	viper.SetDefault("BITDEFENDER_PROXY_MODE", false)
 	viper.SetDefault("BITDEFENDER_PROXY_BASE_URL", "https://upgrade.bitdefender.com")
 	viper.SetDefault("ENABLE_SNORT_TEMPLATE", true)
 	viper.SetDefault("SNORT_TEMPLATE_URL", "http://download.kerio.com/control-update/config/v1/snort.tpl")
@@ -96,7 +94,7 @@ func Load(path string) (*Config, error) {
 		ScheduleTime:            viper.GetString("SCHEDULE_TIME"),
 		IDSURL:                  viper.GetString("IDS_URL"),
 		WebFilterAPI:            viper.GetString("WEBFILTER_API"),
-		EnableBitdefender:       viper.GetBool("ENABLE_BITDEFENDER"),
+		BitdefenderMode:         viper.GetString("BITDEFENDER_MODE"),
 		DatabasePath:            viper.GetString("DATABASE_PATH"),
 		LogPath:                 viper.GetString("LOG_PATH"),
 		RetryCount:              viper.GetInt("RETRY_COUNT"),
@@ -113,7 +111,6 @@ func Load(path string) (*Config, error) {
 		EnableIDS3:              viper.GetBool("ENABLE_IDS3"),
 		EnableIDS4:              viper.GetBool("ENABLE_IDS4"),
 		EnableIDS5:              viper.GetBool("ENABLE_IDS5"),
-		BitdefenderProxyMode:    viper.GetBool("BITDEFENDER_PROXY_MODE"),
 		BitdefenderProxyBaseURL: viper.GetString("BITDEFENDER_PROXY_BASE_URL"),
 		EnableSnortTemplate:      viper.GetBool("ENABLE_SNORT_TEMPLATE"),
 		SnortTemplateURL:         viper.GetString("SNORT_TEMPLATE_URL"),
@@ -143,13 +140,12 @@ func Save(cfg *Config, path string) error {
 	viper.Set("LICENSE_NUMBER", cfg.LicenseNumber)
 	viper.Set("LOG_LEVEL", cfg.LogLevel)
 	viper.Set("CUSTOM_DOWNLOAD_URLS", cfg.CustomDownloadURLs)
-	viper.Set("ENABLE_BITDEFENDER", cfg.EnableBitdefender)
+	viper.Set("BITDEFENDER_MODE", cfg.BitdefenderMode)
 	viper.Set("ENABLE_IDS1", cfg.EnableIDS1)
 	viper.Set("ENABLE_IDS2", cfg.EnableIDS2)
 	viper.Set("ENABLE_IDS3", cfg.EnableIDS3)
 	viper.Set("ENABLE_IDS4", cfg.EnableIDS4)
 	viper.Set("ENABLE_IDS5", cfg.EnableIDS5)
-	viper.Set("BITDEFENDER_PROXY_MODE", cfg.BitdefenderProxyMode)
 	viper.Set("BITDEFENDER_PROXY_BASE_URL", cfg.BitdefenderProxyBaseURL)
 	viper.Set("ENABLE_SNORT_TEMPLATE", cfg.EnableSnortTemplate)
 	viper.Set("SNORT_TEMPLATE_URL", cfg.SnortTemplateURL)

@@ -106,7 +106,7 @@ func getDashboardStatus(cfg *config.Config) (*DashboardStatus, error) {
 			successfulComponents++
 		}
 	}
-	if cfg.EnableBitdefender {
+	if cfg.BitdefenderMode == "mirror" {
 		activeComponents++
 		if bitdefenderSuccess {
 			successfulComponents++
@@ -232,10 +232,16 @@ func settingsPageHandler(cfg *config.Config, embeddedFiles embed.FS) echo.Handle
 					cfg.BitdefenderURLs = append(cfg.BitdefenderURLs, line)
 				}
 			}
-			// Bitdefender mode (взаимоисключающие опции)
+			// Bitdefender mode
 			bitdefenderMode := c.FormValue("BitdefenderMode")
-			cfg.EnableBitdefender = bitdefenderMode == "updates"
-			cfg.BitdefenderProxyMode = bitdefenderMode == "proxy"
+			switch bitdefenderMode {
+			case "mirror":
+				cfg.BitdefenderMode = "mirror"
+			case "proxy":
+				cfg.BitdefenderMode = "proxy"
+			default:
+				cfg.BitdefenderMode = "disabled"
+			}
 			cfg.BitdefenderProxyBaseURL = c.FormValue("BitdefenderProxyBaseURL")
 
 			customUrlsRaw := c.FormValue("CustomDownloadUrls")
@@ -455,7 +461,7 @@ func updateKerioHandler(cfg *config.Config, logger *logrus.Logger) echo.HandlerF
 			return c.String(http.StatusOK, response)
 		case 9, 10:
 			// Если включен режим прокси Bitdefender, перенаправляем клиента на наш сервер
-			if cfg.BitdefenderProxyMode {
+			if cfg.BitdefenderMode == "proxy" {
 				return c.String(http.StatusOK, "THDdir=http://"+c.Request().Host+"/")
 			}
 			return c.String(http.StatusOK, "THDdir=https://bdupdate.kerio.com/../")
@@ -743,7 +749,7 @@ func fallbackHandler(cfg *config.Config, logger *logrus.Logger) echo.HandlerFunc
 		// Check for Bitdefender requests
 		if strings.Contains(host, "bdupdate.kerio.com") || strings.Contains(host, "bda-update.kerio.com") {
 			// Если включен режим прокси, используем прокси-обработчик
-			if cfg.BitdefenderProxyMode {
+			if cfg.BitdefenderMode == "proxy" {
 				return mirror.BitdefenderProxyHandler(cfg, logger)(c)
 			}
 
