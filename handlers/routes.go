@@ -3,6 +3,7 @@ package handlers
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"kerio-mirror-go/db"
 	"kerio-mirror-go/logging"
 	"kerio-mirror-go/mirror"
+	"kerio-mirror-go/utils"
 
 	"database/sql"
 
@@ -461,7 +463,9 @@ func shieldMatrixCheckUpdateHandler(cfg *config.Config, logger *logrus.Logger) e
 		// Проверяем что Shield Matrix включен
 		if !cfg.EnableShieldMatrix {
 			logger.Warn("Shield Matrix: update check received but Shield Matrix is disabled")
-			return c.String(http.StatusOK, "0")
+			return c.JSON(http.StatusOK, map[string]interface{}{
+				"available": false,
+			})
 		}
 
 		// Открываем соединение с БД
@@ -478,20 +482,143 @@ func shieldMatrixCheckUpdateHandler(cfg *config.Config, logger *logrus.Logger) e
 
 		// Возвращаем текущую версию
 		if currentVersion == "" {
-			logger.Warn("Shield Matrix: no version in database, returning 0")
-			return c.String(http.StatusOK, "0")
+			logger.Warn("Shield Matrix: no version in database, returning unavailable")
+			return c.JSON(http.StatusOK, map[string]interface{}{
+				"available": false,
+			})
 		}
 
-		logger.Infof("Shield Matrix: responding with version: %s", currentVersion)
-		return c.String(http.StatusOK, currentVersion)
+		logger.Infof("Shield Matrix: responding with version available, url: %s", cfg.ShieldMatrixBaseURL)
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"available": true,
+			"url":       cfg.ShieldMatrixBaseURL,
+		})
 	}
 }
 
-// Универсальный обработчик: если host Bitdefender — раздаём базу или работаем как прокси, иначе unknown
-func bitdefenderOrUnknownHandler(cfg *config.Config, logger *logrus.Logger) echo.HandlerFunc {
+// Handler for Shield Matrix CloudFront proxy (on-demand download with caching)
+func shieldMatrixCloudFrontHandler(cfg *config.Config, logger *logrus.Logger) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		logger.Debugf("=== Shield Matrix CloudFront Handler ===")
+		logger.Debugf("Method: %s", c.Request().Method)
+		logger.Debugf("Full URL: %s", c.Request().URL.String())
+		logger.Debugf("Path: %s", c.Request().URL.Path)
+		logger.Debugf("Host: %s", c.Request().Host)
+		logger.Debugf("User-Agent: %s", c.Request().UserAgent())
+
+		logger.Infof("Shield Matrix CloudFront request: %s %s from %s", c.Request().Method, c.Request().URL.Path, c.RealIP())
+
+		// Get the requested file path
+		requestPath := c.Request().URL.Path
+		if requestPath == "" || requestPath == "/" {
+			logger.Warnf("Shield Matrix CloudFront: empty path in request")
+			return c.String(http.StatusBadRequest, "400 Bad Request")
+		}
+
+		// Extract subpath after version (e.g., /9.5.0/ipv4/threat_data_1.dat -> ipv4/threat_data_1.dat)
+		// Remove leading slash
+		requestPath = strings.TrimPrefix(requestPath, "/")
+
+		// Split by slash and skip version part (first segment like "9.5.0")
+		parts := strings.SplitN(requestPath, "/", 2)
+		if len(parts) < 2 {
+			logger.Warnf("Shield Matrix CloudFront: invalid path format: %s", requestPath)
+			return c.String(http.StatusBadRequest, "400 Bad Request")
+		}
+
+		subpath := parts[1] // e.g., "ipv4/threat_data_1.dat"
+		logger.Debugf("Shield Matrix CloudFront: extracted subpath: '%s'", subpath)
+
+		// Validate that this is a threat_data file request or version file
+		if subpath == "version" {
+			// Special case: version file request
+			// Proxy to upstream CloudFront
+			logger.Debugf("Shield Matrix CloudFront: version file request, proxying to upstream")
+
+			upstreamURL := fmt.Sprintf("%s/%s", cfg.ShieldMatrixBaseURL, subpath)
+			logger.Debugf("Shield Matrix CloudFront: upstream URL: %s", upstreamURL)
+
+			resp, err := utils.HTTPGetWithRetry(upstreamURL, cfg.RetryCount, time.Duration(cfg.RetryDelaySeconds)*time.Second, cfg.ProxyURL)
+			if err != nil {
+				logger.Errorf("Shield Matrix CloudFront: failed to fetch version: %v", err)
+				return c.String(http.StatusNotFound, "404 Not found")
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != 200 {
+				logger.Errorf("Shield Matrix CloudFront: bad status code %d for version", resp.StatusCode)
+				return c.String(http.StatusNotFound, "404 Not found")
+			}
+
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				logger.Errorf("Shield Matrix CloudFront: failed to read version response: %v", err)
+				return c.String(http.StatusInternalServerError, "500 Internal Server Error")
+			}
+
+			logger.Infof("Shield Matrix CloudFront: serving version file (%d bytes)", len(body))
+			return c.String(http.StatusOK, string(body))
+		}
+
+		if !strings.Contains(subpath, "ipv4/threat_data") && !strings.Contains(subpath, "ipv6/threat_data") {
+			logger.Warnf("Shield Matrix CloudFront: invalid file request (not threat_data or version): %s", subpath)
+			return c.String(http.StatusNotFound, "404 Not found")
+		}
+
+		// Build local path: mirror/matrix/{ipv4|ipv6}/...
+		localPath := filepath.Join("mirror", "matrix", filepath.Clean(subpath))
+		logger.Debugf("Shield Matrix CloudFront: local path to check: %s", localPath)
+
+		// Prevent directory traversal attacks
+		absBase, err := filepath.Abs("mirror/matrix")
+		if err != nil {
+			logger.Errorf("Shield Matrix CloudFront: failed to get absolute path for matrix dir: %v", err)
+			return c.String(http.StatusInternalServerError, "500 Internal Server Error")
+		}
+		absFile, err := filepath.Abs(localPath)
+		if err != nil {
+			logger.Errorf("Shield Matrix CloudFront: failed to get absolute path for requested file %s: %v", localPath, err)
+			return c.String(http.StatusInternalServerError, "500 Internal Server Error")
+		}
+
+		if !strings.HasPrefix(absFile, absBase) {
+			logger.Warnf("Shield Matrix CloudFront: path traversal attempt: %s", subpath)
+			return c.String(http.StatusForbidden, "403 Forbidden")
+		}
+
+		// Check if file exists, if not - download it on-demand
+		fileInfo, err := os.Stat(localPath)
+		if err != nil {
+			logger.Infof("Shield Matrix CloudFront: file not found locally (%s), initiating on-demand download", subpath)
+			logger.Debugf("Shield Matrix CloudFront: stat error: %v", err)
+
+			// Download the file
+			if err := mirror.DownloadShieldMatrixFile(subpath, cfg, logger); err != nil {
+				logger.Errorf("Shield Matrix CloudFront: failed to download file %s: %v", subpath, err)
+				return c.String(http.StatusNotFound, "404 Not found")
+			}
+
+			// Re-stat the file to get size
+			fileInfo, _ = os.Stat(localPath)
+		} else {
+			logger.Debugf("Shield Matrix CloudFront: file found in cache: %s (%d bytes)", localPath, fileInfo.Size())
+		}
+
+		// Serve the file
+		var fileSize int64
+		if fileInfo != nil {
+			fileSize = fileInfo.Size()
+		}
+		logger.Infof("Shield Matrix CloudFront: serving file %s (%d bytes) to %s", subpath, fileSize, c.RealIP())
+		return c.File(localPath)
+	}
+}
+
+// Fallback handler: handles CloudFront (Shield Matrix), Bitdefender, or returns unknown route
+func fallbackHandler(cfg *config.Config, logger *logrus.Logger) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// Debug logging for unknown routes
-		logger.Debugf("=== Bitdefender/Unknown Handler ===")
+		logger.Debugf("=== Fallback Handler ===")
 		logger.Debugf("Method: %s", c.Request().Method)
 		logger.Debugf("Full URL: %s", c.Request().URL.String())
 		logger.Debugf("Path: %s", c.Request().URL.Path)
@@ -500,6 +627,14 @@ func bitdefenderOrUnknownHandler(cfg *config.Config, logger *logrus.Logger) echo
 		logger.Debugf("RealIP: %s", c.RealIP())
 
 		host := c.Request().Host
+
+		// Check for CloudFront (Shield Matrix) requests
+		if strings.Contains(host, "cloudfront.net") || strings.Contains(host, "d2akeya8d016xi") {
+			logger.Debugf("Fallback handler: CloudFront host detected, delegating to Shield Matrix handler")
+			return shieldMatrixCloudFrontHandler(cfg, logger)(c)
+		}
+
+		// Check for Bitdefender requests
 		if strings.Contains(host, "bdupdate.kerio.com") || strings.Contains(host, "bda-update.kerio.com") {
 			// Если включен режим прокси, используем прокси-обработчик
 			if cfg.BitdefenderProxyMode {
@@ -688,7 +823,7 @@ func matrixHandler(logger *logrus.Logger) echo.HandlerFunc {
 
 // Handler for serving files from the mirror/custom directory or fallback to bitdefender/unknown
 func customFilesHandlerOrFallback(cfg *config.Config, logger *logrus.Logger) echo.HandlerFunc {
-	fallback := bitdefenderOrUnknownHandler(cfg, logger)
+	fallback := fallbackHandler(cfg, logger)
 	return func(c echo.Context) error {
 		// Debug logging
 		logger.Debugf("=== Custom Files Handler ===")
