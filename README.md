@@ -266,6 +266,38 @@ Shield Matrix provides advanced threat detection for Kerio Control 9.5 and above
 4. **File Integrity Check**: When preload mode is enabled, checks for missing files and re-downloads if needed
 5. **CloudFront Proxy**: Intercepts CloudFront requests and serves from local cache
 
+**Requests and respones:**
+request:
+https://shieldmatrix-updates.gfikeriocontrol.com/check_update/?client-id=control&version=9.5.0&last-update=0
+response:
+{"available": true, "url": "https://d2akeya8d016xi.cloudfront.net/9.5.0/"}
+
+request:
+`https://d2akeya8d016xi.cloudfront.net/9.5.0/version`
+response:
+version file with version content:
+1759878869
+
+request:
+`https://d2akeya8d016xi.cloudfront.net/9.5.0/ipv4/threat_data_1.dat`
+response file:
+threat_data_1.dat
+...
+request:
+`https://d2akeya8d016xi.cloudfront.net/9.5.0/ipv4/threat_data_5.dat`
+response file:
+threat_data_5.dat
+
+request:
+`https://d2akeya8d016xi.cloudfront.net/9.5.0/ipv6/threat_data_1.dat`
+response file:
+threat_data_1.dat
+...
+request:
+`https://d2akeya8d016xi.cloudfront.net/9.5.0/ipv6/threat_data_5.dat`
+response file:
+threat_data_5.dat
+
 **Supported Files:**
 - IPv4: `threat_data_1.dat` to `threat_data_5.dat` (5 files)
 - IPv6: `threat_data_1.dat` to `threat_data_5.dat` (5 files)
