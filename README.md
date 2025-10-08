@@ -548,4 +548,5 @@ The project uses GitHub Actions for:
 
 ## Support
 
-For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/TheTitanrain/kerioMirrorGo).
+- 💬 **Telegram Group**: Join our community at [t.me/kerioMirrorGo](https://t.me/+j_e5rm0pXLRjZmQy)
+- 🐛 **Issues & Contributions**: Visit the [GitHub repository](https://github.com/TheTitanrain/kerioMirrorGo)
