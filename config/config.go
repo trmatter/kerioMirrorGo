@@ -65,7 +65,10 @@ func Load(path string) (*Config, error) {
 	viper.SetDefault("GEOLOC_URL", "https://raw.githubusercontent.com/wyot1/GeoLite2-Unwalled/downloads/COUNTRY/CSV/GeoLite2-Country-Locations-en.csv")
 	viper.SetDefault("LICENSE_NUMBER", "")
 	viper.SetDefault("LOG_LEVEL", "info")
-	viper.SetDefault("CUSTOM_DOWNLOAD_URLS", []string{})
+	viper.SetDefault("CUSTOM_DOWNLOAD_URLS", []string{
+		"http://download.kerio.com/control-update/config/v1/snort.tpl",
+		"http://download.kerio.com/control-update/config/v1/snort.tpl.md5",
+	})
 	viper.SetDefault("ENABLE_BITDEFENDER", true)
 	viper.SetDefault("ENABLE_IDS1", true)
 	viper.SetDefault("ENABLE_IDS2", true)
