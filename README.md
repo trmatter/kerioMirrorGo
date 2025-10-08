@@ -124,8 +124,7 @@ The application reads its configuration from `config.yaml`. All settings can als
 | `LOG_PATH` | Log file path | `./logs/mirror.log` |
 | `PROXY_URL` | HTTP proxy for outbound requests | - |
 | `ENABLE_IDS1` - `ENABLE_IDS5` | Enable/disable IDS versions | `true` |
-| `ENABLE_BITDEFENDER` | Enable Bitdefender updates | `true` |
-| `BITDEFENDER_PROXY_MODE` | Enable proxy mode with caching | `false` |
+| `BITDEFENDER_MODE` | Bitdefender mode: `disabled`, `mirror`, or `proxy` | `disabled` |
 | `BITDEFENDER_PROXY_BASE_URL` | Upstream URL for proxy mode | `https://upgrade.bitdefender.com` |
 | `ENABLE_SHIELD_MATRIX` | Enable Shield Matrix for Kerio 9.5+ | `true` |
 | `SHIELD_MATRIX_BASE_URL` | Base URL for Shield Matrix check_update endpoint | `https://shieldmatrix-updates.gfikeriocontrol.com/check_update/` |
@@ -159,8 +158,7 @@ ENABLE_IDS5: true
 IDS_URL: https://update.kerio.com/dwn/control/update.php?license=%s&version=%s
 
 # Bitdefender Settings
-ENABLE_BITDEFENDER: true
-BITDEFENDER_PROXY_MODE: false
+BITDEFENDER_MODE: "disabled"  # Options: "disabled", "mirror", "proxy"
 BITDEFENDER_PROXY_BASE_URL: https://upgrade.bitdefender.com
 BITDEFENDER_URLS: []
 
@@ -184,7 +182,9 @@ GEOLOC_URL: https://raw.githubusercontent.com/wyot1/GeoLite2-Unwalled/downloads/
 WEBFILTER_API: https://updates.kerio.com/webfilter/key
 
 # Custom Downloads
-CUSTOM_DOWNLOAD_URLS: []
+CUSTOM_DOWNLOAD_URLS:
+  - http://download.kerio.com/control-update/config/v1/snort.tpl
+  - http://download.kerio.com/control-update/config/v1/snort.tpl.md5
 
 # IP Access Control
 ALLOWED_IPS: []  # Whitelist - if set, only these IPs can access the server
@@ -256,9 +256,21 @@ Downloaded files are stored in the `mirror/` directory:
 - `mirror/matrix/` - Shield Matrix threat data files (IPv4/IPv6)
 - `mirror/custom/` - Custom downloaded files
 
-### Bitdefender Proxy Mode
+### Bitdefender Modes
 
-When `BITDEFENDER_PROXY_MODE: true`, the server acts as a caching proxy:
+The application supports three Bitdefender modes via the `BITDEFENDER_MODE` setting:
+
+**1. Disabled Mode (`"disabled"`)**:
+- Bitdefender updates are completely disabled
+- No Bitdefender files are downloaded or served
+
+**2. Mirror Mode (`"mirror"`)**:
+- Downloads Bitdefender databases from configured URLs
+- Files are stored locally in `mirror/bitdefender/`
+- Scheduled updates download new versions
+
+**3. Proxy Mode (`"proxy"`)**:
+- Server acts as a caching proxy for Bitdefender updates:
 1. Requests to Bitdefender URLs are forwarded to `BITDEFENDER_PROXY_BASE_URL`
 2. Responses are cached locally in `mirror/bitdefender/`
 3. Subsequent requests are served from cache
@@ -399,6 +411,51 @@ GET /getkey.php?number=YOUR_LICENSE
 ```
 
 Returns the WebFilter key for the specified license number.
+
+## Release Management
+
+The project includes automated release scripts for version tagging:
+
+### Release Scripts
+
+**For Windows (`release.bat`):**
+```batch
+release.bat [major|minor|patch|specific_version]
+```
+
+**For Unix/Linux/macOS (`release.sh`):**
+```bash
+./release.sh [major|minor|patch|specific_version]
+```
+
+**Features:**
+- ✅ Automatic version incrementing (major, minor, patch)
+- ✅ Custom version support (e.g., `release.sh v1.2.3`)
+- ✅ Git repository validation
+- ✅ Uncommitted changes check
+- ✅ User confirmation before tagging
+- ✅ Automatic tag pushing to remote
+
+**Examples:**
+```bash
+# Increment patch version (1.0.0 → 1.0.1)
+./release.sh patch
+
+# Increment minor version (1.0.0 → 1.1.0)
+./release.sh minor
+
+# Increment major version (1.0.0 → 2.0.0)
+./release.sh major
+
+# Set specific version
+./release.sh v2.5.0
+```
+
+**Requirements:**
+- Git must be installed
+- Must be run in a Git repository
+- No uncommitted changes allowed
+- Previous version tag must exist (or none if first release)
 
 ## Development
 
