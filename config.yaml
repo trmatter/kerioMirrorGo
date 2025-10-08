@@ -1,24 +1,32 @@
-bitdefender_proxy_base_url: https://bdupdate.kerio.com
-bitdefender_proxy_mode: true
+allowed_ips: []
+bitdefender_mode: proxy
+bitdefender_proxy_base_url: https://upgrade.bitdefender.com
+blocked_ips: []
 custom_download_urls:
     - http://download.kerio.com/control-update/config/v1/snort.tpl
     - http://download.kerio.com/control-update/config/v1/snort.tpl.md5
 database_path: ./mirror.db
-enable_bitdefender: true
 enable_ids1: true
 enable_ids2: true
 enable_ids3: true
 enable_ids4: true
 enable_ids5: true
+enable_shield_matrix: true
+enable_snort_template: true
 geoip4_url: https://raw.githubusercontent.com/wyot1/GeoLite2-Unwalled/downloads/COUNTRY/CSV/GeoLite2-Country-Blocks-IPv4.csv
 geoip6_url: https://raw.githubusercontent.com/wyot1/GeoLite2-Unwalled/downloads/COUNTRY/CSV/GeoLite2-Country-Blocks-IPv6.csv
 geoloc_url: https://raw.githubusercontent.com/wyot1/GeoLite2-Unwalled/downloads/COUNTRY/CSV/GeoLite2-Country-Locations-en.csv
 ids_url: https://ids-update.kerio.com/update.php?id=%s&version=%s.0&tag=
-license_number: 20339-A95AV-ZAFSK
+license_number: 
 log_level: info
 log_path: ./logs/mirror.log
-proxy_url: ""
+proxy_url: 
 retry_count: 3
 retry_delay_seconds: 10
 schedule_time: "03:00"
+shield_matrix_base_url: https://shieldmatrix-updates.gfikeriocontrol.com/check_update/
+shield_matrix_client_id: control
+shield_matrix_preload_files: false
+shield_matrix_version: 9.5.0
+snort_template_url: http://download.kerio.com/control-update/config/v1/snort.tpl
 webfilter_api: https://updates.kerio.com/webfilter/key
