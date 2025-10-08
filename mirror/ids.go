@@ -40,6 +40,17 @@ func DownloadAndUpdateIDS(conn *sql.DB, cfg *config.Config, logger *logrus.Logge
 			logger.Infof("IDSv%s: update is disabled by config", version)
 			continue
 		}
+
+		// Special handling for version 4 (GeoIP)
+		if version == "4" {
+			if cfg.GeoIP4URL != "" && cfg.GeoIP6URL != "" {
+				UpdateGeoIPDatabases(conn, cfg, logger)
+			} else {
+				logger.Infof("IDSv4 (GeoIP): URLs are not configured")
+			}
+			continue
+		}
+
 		if cfg.LicenseNumber == "" {
 			logger.Infof("IDSv%s: passing because license key is not configured", version)
 			continue

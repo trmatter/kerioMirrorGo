@@ -22,17 +22,11 @@ func Update(cfg *config.Config, logger *logrus.Logger) {
 	}
 	defer conn.Close()
 
-	// Загрузка баз IDS
+	// Загрузка баз IDS (включая GeoIP как IDS4)
 	DownloadAndUpdateIDS(conn, cfg, logger)
 
-	// Загрузка баз GeoIP
-	if cfg.GeoIP4URL != "" && cfg.GeoIP6URL != "" {
-		// Call the new function from geo.go to handle GeoIP update
-		UpdateGeoIPDatabases(conn, cfg, logger)
-	}
-
-	// Download locations file if configured
-	if cfg.GeoLocURL != "" {
+	// Download locations file if configured (part of GeoIP/IDS4)
+	if cfg.EnableIDS4 && cfg.GeoLocURL != "" {
 		DownloadGeoLocations(cfg, logger)
 	}
 
