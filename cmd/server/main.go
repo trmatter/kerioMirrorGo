@@ -98,7 +98,7 @@ func main() {
 		defer wg.Done()
 		if err := e.StartTLS(":443", "cert.pem", "key.pem"); err != nil {
 			errMsg := err.Error()
-			if strings.Contains(errMsg, "address already in use") || strings.Contains(errMsg, "Only one usage of each socket address") {
+			if strings.Contains(errMsg, "Only one usage of each socket address") {
 				logger.Error("========================================")
 				logger.Error("PORT 443 IS ALREADY IN USE")
 				logger.Error("========================================")
@@ -115,6 +115,33 @@ func main() {
 				logger.Error("  Linux:   sudo kill <PID>")
 				logger.Error("========================================")
 				errChan <- err
+			} else if strings.Contains(errMsg, "The system cannot find the file specified") {
+				logger.Error("========================================")
+				logger.Error("SSL CERTIFICATE FILES NOT FOUND")
+				logger.Error("========================================")
+				logger.Error("The HTTPS server requires cert.pem and key.pem files.")
+				logger.Error("")
+				logger.Error("Option 1: Generate self-signed certificate in Kerio Control interface:")
+				logger.Error("  Go to  https://control.local/admin/#sslCertificates")
+				logger.Error("  Click on 'Add' -> 'New Certificate'")
+				logger.Error("  Enter the following information:")
+				logger.Error("    Name: KerioMirror (or any other name)")
+				logger.Error("    Hostname: KerioMirror (or any other name)")
+				logger.Error("    Alternative Hostnames: All domains that you use for updates. See readme.md")
+				logger.Error("    Click on 'OK'")
+				logger.Error("  Click right mouse button on the certificate and select 'Export' -> 'Export Certificate in PEM' and 'Export Private Key in PEM'")
+				logger.Error("  Save the certificate and key files to the working directory")
+				logger.Error("  Rename the certificate file to cert.pem and the key file to key.pem")
+				logger.Error("  Save the certificate and key files to the working directory")
+				logger.Error("")
+				logger.Error("Option 2: Generate self-signed certificate (for testing/development):")
+				logger.Error("  openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj \"/CN=localhost\"")
+				logger.Error("")
+				logger.Error("Option 3: Use existing certificates:")
+				logger.Error("  Copy your cert.pem and key.pem files to the working directory")
+				logger.Error("")
+				logger.Error("Note: HTTP server on port 80 will continue to work without HTTPS")
+				logger.Error("========================================")
 			} else {
 				logger.Errorf("HTTPS server error: %v", err)
 			}
