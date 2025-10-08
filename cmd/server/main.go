@@ -4,6 +4,7 @@ import (
 	"embed"
 	"flag"
 	"log"
+	"strings"
 	"sync"
 
 	"kerio-mirror-go/config"
@@ -61,11 +62,33 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
+	// Channel to capture critical errors
+	errChan := make(chan error, 2)
+
 	// Start HTTP server (port 80)
 	go func() {
 		defer wg.Done()
 		if err := e.Start(":80"); err != nil {
-			logger.Errorf("HTTP server error: %v", err)
+			if strings.Contains(err.Error(), "address already in use") {
+				logger.Error("========================================")
+				logger.Error("PORT 80 IS ALREADY IN USE")
+				logger.Error("========================================")
+				logger.Error("Another application is using port 80.")
+				logger.Error("")
+				logger.Error("To find which process is using port 80:")
+				logger.Error("  Windows: netstat -ano | findstr :80")
+				logger.Error("           tasklist /FI \"PID eq <PID>\"")
+				logger.Error("  Linux:   sudo lsof -i :80")
+				logger.Error("           sudo netstat -tulpn | grep :80")
+				logger.Error("")
+				logger.Error("To stop the process:")
+				logger.Error("  Windows: taskkill /PID <PID> /F")
+				logger.Error("  Linux:   sudo kill <PID>")
+				logger.Error("========================================")
+				errChan <- err
+			} else {
+				logger.Errorf("HTTP server error: %v", err)
+			}
 		}
 	}()
 
@@ -73,7 +96,33 @@ func main() {
 	go func() {
 		defer wg.Done()
 		if err := e.StartTLS(":443", "cert.pem", "key.pem"); err != nil {
-			logger.Errorf("HTTPS server error: %v", err)
+			if strings.Contains(err.Error(), "address already in use") {
+				logger.Error("========================================")
+				logger.Error("PORT 443 IS ALREADY IN USE")
+				logger.Error("========================================")
+				logger.Error("Another application is using port 443.")
+				logger.Error("")
+				logger.Error("To find which process is using port 443:")
+				logger.Error("  Windows: netstat -ano | findstr :443")
+				logger.Error("           tasklist /FI \"PID eq <PID>\"")
+				logger.Error("  Linux:   sudo lsof -i :443")
+				logger.Error("           sudo netstat -tulpn | grep :443")
+				logger.Error("")
+				logger.Error("To stop the process:")
+				logger.Error("  Windows: taskkill /PID <PID> /F")
+				logger.Error("  Linux:   sudo kill <PID>")
+				logger.Error("========================================")
+				errChan <- err
+			} else {
+				logger.Errorf("HTTPS server error: %v", err)
+			}
+		}
+	}()
+
+	// Monitor for critical errors
+	go func() {
+		if err := <-errChan; err != nil {
+			logger.Fatal("Application cannot start due to port conflict. Please resolve the issue and try again.")
 		}
 	}()
 
