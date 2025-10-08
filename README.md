@@ -200,6 +200,7 @@ To use the mirror server, configure your DNS server to point the following hostn
 
 **For Shield Matrix (Kerio 9.5+):**
 - `shieldmatrix-updates.gfikeriocontrol.com` → Your mirror server IP
+- `d2akeya8d016xi.cloudfront.net` → Your mirror server IP
 
 **Example DNS configuration:**
 ```
@@ -210,6 +211,7 @@ download.kerio.com.          IN A    192.168.1.100
 bdupdate.kerio.com.          IN A    192.168.1.100
 bda-update.kerio.com.        IN A    192.168.1.100
 shieldmatrix-updates.gfikeriocontrol.com. IN A 192.168.1.100
+d2akeya8d016xi.cloudfront.net. IN A 192.168.1.100
 ```
 
 Replace `192.168.1.100` with your actual mirror server IP address.
