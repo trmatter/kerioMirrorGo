@@ -10,6 +10,7 @@ import (
 	"kerio-mirror-go/db"
 	"kerio-mirror-go/handlers"
 	"kerio-mirror-go/logging"
+	"kerio-mirror-go/middleware"
 	"kerio-mirror-go/mirror"
 
 	"github.com/labstack/echo/v4"
@@ -52,6 +53,8 @@ func main() {
 			return next(c)
 		}
 	})
+	// Add IP filter middleware
+	e.Use(middleware.IPFilterMiddleware(cfg, logger))
 	handlers.RegisterRoutes(e, cfg, logger, embeddedFiles)
 
 	// Start servers in goroutines

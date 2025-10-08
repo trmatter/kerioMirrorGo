@@ -22,6 +22,7 @@ kerio-mirror-go is a Go application designed to mirror definition files used by 
 - 🛡️ **Shield Matrix**: On-demand threat data for Kerio Control 9.5+
 - 📝 **Snort Template**: IPS template updates for Kerio Control 9.5+
 - 📁 **Custom Files**: Mirror any additional URLs
+- 🔒 **IP Access Control**: Whitelist/blacklist with CIDR support
 
 ## Installation
 
@@ -132,6 +133,8 @@ The application reads its configuration from `config.yaml`. All settings can als
 | `ENABLE_SNORT_TEMPLATE` | Enable Snort template updates (IDS5) | `true` |
 | `SNORT_TEMPLATE_URL` | Snort template download URL | `http://download.kerio.com/control-update/config/v1/snort.tpl` |
 | `CUSTOM_DOWNLOAD_URLS` | Array of custom URLs to mirror | `[]` |
+| `ALLOWED_IPS` | IP whitelist (CIDR or single IPs) | `[]` |
+| `BLOCKED_IPS` | IP blacklist (CIDR or single IPs) | `[]` |
 | `RETRY_COUNT` | Download retry attempts | `3` |
 | `RETRY_DELAY_SECONDS` | Delay between retries | `10` |
 
@@ -178,6 +181,10 @@ WEBFILTER_API: https://updates.kerio.com/webfilter/key
 
 # Custom Downloads
 CUSTOM_DOWNLOAD_URLS: []
+
+# IP Access Control
+ALLOWED_IPS: []  # Whitelist - if set, only these IPs can access the server
+BLOCKED_IPS: []  # Blacklist - these IPs will be blocked (takes priority)
 
 # Retry Settings
 RETRY_COUNT: 3
@@ -325,6 +332,45 @@ d2akeya8d016xi.cloudfront.net. IN A 192.168.1.100
 
 The version number in the URL (9.5.0) corresponds to the Kerio Control version.
 
+### IP Access Control
+
+The application supports IP-based access control with both whitelist and blacklist functionality:
+
+**Features:**
+- ✅ Whitelist mode: Only allow specific IPs
+- ❌ Blacklist mode: Block specific IPs
+- 🌐 CIDR notation support (e.g., `192.168.1.0/24`)
+- 📍 Single IP support (e.g., `192.168.1.100`)
+- 🔍 Automatic IP detection from headers (`X-Real-IP`, `X-Forwarded-For`)
+- 📝 Detailed logging of blocked access attempts
+
+**Configuration:**
+```yaml
+ALLOWED_IPS:
+  - 192.168.1.100      # Single IP
+  - 192.168.2.0/24     # CIDR range
+  - 10.0.0.0/8         # Large CIDR range
+
+BLOCKED_IPS:
+  - 203.0.113.50       # Block specific IP
+  - 198.51.100.0/24    # Block entire range
+```
+
+**Access Logic:**
+1. If IP is in `BLOCKED_IPS` → **403 Forbidden** (blacklist takes priority)
+2. If `ALLOWED_IPS` is set and IP is NOT in list → **403 Forbidden**
+3. If both lists are empty → **Allow all** (no restrictions)
+
+**Web Configuration:**
+IP access control can be configured via the web interface at `/settings` under the "IP Access Control" section. Enter one IP or CIDR range per line.
+
+**Logging:**
+All blocked access attempts are logged with warning level:
+```
+WARN[0123] IP filter: blocked IP 203.0.113.50 attempting to access /update.php
+WARN[0124] IP filter: unauthorized IP 1.2.3.4 attempting to access /
+```
+
 ## API Endpoints
 
 ### Update Endpoint (Kerio Control)
@@ -354,6 +400,8 @@ kerioMirrorGo/
 ├── db/                  # Database initialization and schema
 ├── handlers/            # HTTP request handlers
 ├── logging/             # Logging utilities
+├── middleware/          # HTTP middleware (IP filtering, etc.)
+│   └── ipfilter.go      # IP access control middleware
 ├── mirror/              # Mirror logic for each component
 │   ├── bitdefender.go
 │   ├── bitdefender_proxy.go

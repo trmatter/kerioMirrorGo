@@ -34,9 +34,11 @@ type Config struct {
 	BitdefenderProxyBaseURL string   // Базовый URL для прокси Bitdefender
 	EnableSnortTemplate      bool   // Включить обновление шаблона Snort для IPS
 	SnortTemplateURL         string // URL для скачивания snort.tpl
-	EnableShieldMatrix       bool   // Включить обновление Shield Matrix (Kerio 9.5+)
-	ShieldMatrixBaseURL      string // Базовый URL для Shield Matrix (без /version)
-	ShieldMatrixPreloadFiles bool   // Предзагружать все файлы Shield Matrix по расписанию
+	EnableShieldMatrix       bool     // Включить обновление Shield Matrix (Kerio 9.5+)
+	ShieldMatrixBaseURL      string   // Базовый URL для Shield Matrix (без /version)
+	ShieldMatrixPreloadFiles bool     // Предзагружать все файлы Shield Matrix по расписанию
+	AllowedIPs               []string // Разрешенные IP адреса (whitelist)
+	BlockedIPs               []string // Заблокированные IP адреса (blacklist)
 }
 
 func Load(path string) (*Config, error) {
@@ -75,6 +77,8 @@ func Load(path string) (*Config, error) {
 	viper.SetDefault("ENABLE_SHIELD_MATRIX", true)
 	viper.SetDefault("SHIELD_MATRIX_BASE_URL", "https://d2akeya8d016xi.cloudfront.net/9.5.0")
 	viper.SetDefault("SHIELD_MATRIX_PRELOAD_FILES", false)
+	viper.SetDefault("ALLOWED_IPS", []string{})
+	viper.SetDefault("BLOCKED_IPS", []string{})
 
 	viper.AutomaticEnv()
 	if err := viper.ReadInConfig(); err != nil {
@@ -109,6 +113,8 @@ func Load(path string) (*Config, error) {
 		EnableShieldMatrix:       viper.GetBool("ENABLE_SHIELD_MATRIX"),
 		ShieldMatrixBaseURL:      viper.GetString("SHIELD_MATRIX_BASE_URL"),
 		ShieldMatrixPreloadFiles: viper.GetBool("SHIELD_MATRIX_PRELOAD_FILES"),
+		AllowedIPs:               viper.GetStringSlice("ALLOWED_IPS"),
+		BlockedIPs:               viper.GetStringSlice("BLOCKED_IPS"),
 	}, nil
 }
 
@@ -141,6 +147,8 @@ func Save(cfg *Config, path string) error {
 	viper.Set("ENABLE_SHIELD_MATRIX", cfg.EnableShieldMatrix)
 	viper.Set("SHIELD_MATRIX_BASE_URL", cfg.ShieldMatrixBaseURL)
 	viper.Set("SHIELD_MATRIX_PRELOAD_FILES", cfg.ShieldMatrixPreloadFiles)
+	viper.Set("ALLOWED_IPS", cfg.AllowedIPs)
+	viper.Set("BLOCKED_IPS", cfg.BlockedIPs)
 
 	// Set config type explicitly if file extension is missing or not supported for writing
 	ext := filepath.Ext(path)

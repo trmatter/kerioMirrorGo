@@ -211,6 +211,25 @@
         </div>
 
         <div class="section-card">
+          <div class="section-title"><i class="bi bi-shield-lock"></i> IP Access Control</div>
+          <div class="mb-3">
+            <label class="form-label">Allowed IPs (Whitelist)</label>
+            <textarea class="form-control" name="AllowedIPs" rows="4" placeholder="192.168.1.100
+192.168.2.0/24
+10.0.0.0/8">{{range .Config.AllowedIPs}}{{.}}
+{{end}}</textarea>
+            <div class="form-text">One IP address or CIDR range per line. If specified, only these IPs will be allowed access. Leave empty to allow all.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Blocked IPs (Blacklist)</label>
+            <textarea class="form-control" name="BlockedIPs" rows="4" placeholder="203.0.113.50
+198.51.100.0/24">{{range .Config.BlockedIPs}}{{.}}
+{{end}}</textarea>
+            <div class="form-text">One IP address or CIDR range per line. These IPs will be blocked. Blacklist takes priority over whitelist.</div>
+          </div>
+        </div>
+
+        <div class="section-card">
           <div class="section-title"><i class="bi bi-folder2-open"></i> Paths</div>
           <div class="mb-3">
             <label class="form-label">Database Path</label>

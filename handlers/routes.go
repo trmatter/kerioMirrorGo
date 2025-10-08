@@ -197,6 +197,27 @@ func settingsPageHandler(cfg *config.Config, embeddedFiles embed.FS) echo.Handle
 			cfg.EnableShieldMatrix = c.FormValue("EnableShieldMatrix") == "true"
 			cfg.ShieldMatrixBaseURL = c.FormValue("ShieldMatrixBaseURL")
 			cfg.ShieldMatrixPreloadFiles = c.FormValue("ShieldMatrixPreloadFiles") == "true"
+
+			// Parse allowed IPs
+			allowedIPsRaw := c.FormValue("AllowedIPs")
+			cfg.AllowedIPs = nil
+			for _, line := range strings.Split(allowedIPsRaw, "\n") {
+				line = strings.TrimSpace(line)
+				if line != "" {
+					cfg.AllowedIPs = append(cfg.AllowedIPs, line)
+				}
+			}
+
+			// Parse blocked IPs
+			blockedIPsRaw := c.FormValue("BlockedIPs")
+			cfg.BlockedIPs = nil
+			for _, line := range strings.Split(blockedIPsRaw, "\n") {
+				line = strings.TrimSpace(line)
+				if line != "" {
+					cfg.BlockedIPs = append(cfg.BlockedIPs, line)
+				}
+			}
+
 			msg := "Настройки успешно обновлены!"
 
 			// Get config path from context
