@@ -128,6 +128,7 @@ The application reads its configuration from `config.yaml`. All settings can als
 | `BITDEFENDER_PROXY_BASE_URL` | Upstream URL for proxy mode | `https://upgrade.bitdefender.com` |
 | `ENABLE_SHIELD_MATRIX` | Enable Shield Matrix for Kerio 9.5+ | `true` |
 | `SHIELD_MATRIX_BASE_URL` | CloudFront base URL for Shield Matrix | `https://d2akeya8d016xi.cloudfront.net/9.5.0` |
+| `SHIELD_MATRIX_PRELOAD_FILES` | Preload all Shield Matrix files on schedule | `false` |
 | `ENABLE_SNORT_TEMPLATE` | Enable Snort template updates (IDS5) | `true` |
 | `SNORT_TEMPLATE_URL` | Snort template download URL | `http://download.kerio.com/control-update/config/v1/snort.tpl` |
 | `CUSTOM_DOWNLOAD_URLS` | Array of custom URLs to mirror | `[]` |
@@ -161,6 +162,7 @@ BITDEFENDER_URLS: []
 # Shield Matrix Settings (Kerio 9.5+)
 ENABLE_SHIELD_MATRIX: true
 SHIELD_MATRIX_BASE_URL: https://d2akeya8d016xi.cloudfront.net/9.5.0
+SHIELD_MATRIX_PRELOAD_FILES: false  # Set to true to preload all files on schedule
 
 # Snort Template Settings
 ENABLE_SNORT_TEMPLATE: true
@@ -257,18 +259,36 @@ Shield Matrix provides advanced threat detection for Kerio Control 9.5 and above
 
 **How it works:**
 1. **Version Check**: Periodically checks CloudFront for new Shield Matrix version
-2. **On-Demand Download**: Files are downloaded only when Kerio Control requests them
+2. **Two Download Modes**:
+   - **On-Demand** (default): Files downloaded only when Kerio Control requests them
+   - **Preload**: All files downloaded on schedule for offline/slow connection environments
 3. **Caching**: Downloaded files are cached locally for subsequent requests
-4. **File Types**: Supports IPv4 and IPv6 threat data files
+4. **File Integrity Check**: When preload mode is enabled, checks for missing files and re-downloads if needed
+5. **CloudFront Proxy**: Intercepts CloudFront requests and serves from local cache
 
 **Supported Files:**
-- `ipv4/threat_data_1.dat`, `ipv4/threat_data_2.dat`, ...
-- `ipv6/threat_data_1.dat`, `ipv6/threat_data_2.dat`, ...
+- IPv4: `threat_data_1.dat` to `threat_data_5.dat` (5 files)
+- IPv6: `threat_data_1.dat` to `threat_data_5.dat` (5 files)
+- Total: 10 files per version
 
 **Configuration:**
 ```yaml
 ENABLE_SHIELD_MATRIX: true
 SHIELD_MATRIX_BASE_URL: https://d2akeya8d016xi.cloudfront.net/9.5.0
+SHIELD_MATRIX_PRELOAD_FILES: false  # true = preload all files, false = on-demand
+```
+
+**Download Modes:**
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| **On-Demand** (`false`) | Files downloaded when requested | Normal internet, minimal storage |
+| **Preload** (`true`) | All 10 files downloaded on schedule | Slow/limited internet, offline environments |
+
+**DNS Configuration:**
+To use Shield Matrix, configure your DNS to point CloudFront domain to your mirror server:
+```
+d2akeya8d016xi.cloudfront.net. IN A 192.168.1.100
 ```
 
 The version number in the URL (9.5.0) corresponds to the Kerio Control version.

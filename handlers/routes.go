@@ -196,6 +196,7 @@ func settingsPageHandler(cfg *config.Config, embeddedFiles embed.FS) echo.Handle
 			cfg.SnortTemplateURL = c.FormValue("SnortTemplateURL")
 			cfg.EnableShieldMatrix = c.FormValue("EnableShieldMatrix") == "true"
 			cfg.ShieldMatrixBaseURL = c.FormValue("ShieldMatrixBaseURL")
+			cfg.ShieldMatrixPreloadFiles = c.FormValue("ShieldMatrixPreloadFiles") == "true"
 			msg := "Настройки успешно обновлены!"
 
 			// Get config path from context

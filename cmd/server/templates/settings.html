@@ -198,6 +198,11 @@
             <label class="form-check-label" for="EnableShieldMatrix">Enable Shield Matrix</label>
             <div class="form-text">Shield Matrix for Kerio Control 9.5 and above</div>
           </div>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="ShieldMatrixPreloadFiles" name="ShieldMatrixPreloadFiles" value="true" {{if .Config.ShieldMatrixPreloadFiles}}checked{{end}}>
+            <label class="form-check-label" for="ShieldMatrixPreloadFiles">Preload Shield Matrix Files</label>
+            <div class="form-text">Предзагружать все файлы Shield Matrix по расписанию (вместо загрузки по запросу)</div>
+          </div>
           <div class="mb-3">
             <label class="form-label">Shield Matrix Base URL</label>
             <input type="text" class="form-control" name="ShieldMatrixBaseURL" value="{{.Config.ShieldMatrixBaseURL}}" placeholder="https://d2akeya8d016xi.cloudfront.net/9.5.0">

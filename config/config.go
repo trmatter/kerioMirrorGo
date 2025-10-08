@@ -32,10 +32,11 @@ type Config struct {
 	EnableIDS5              bool     // Включить обновление IDS5
 	BitdefenderProxyMode    bool     // Режим прокси для Bitdefender (запросы передаются на сервер и кэшируются)
 	BitdefenderProxyBaseURL string   // Базовый URL для прокси Bitdefender
-	EnableSnortTemplate  bool   // Включить обновление шаблона Snort для IPS
-	SnortTemplateURL     string // URL для скачивания snort.tpl
-	EnableShieldMatrix   bool   // Включить обновление Shield Matrix (Kerio 9.5+)
-	ShieldMatrixBaseURL  string // Базовый URL для Shield Matrix (без /version)
+	EnableSnortTemplate      bool   // Включить обновление шаблона Snort для IPS
+	SnortTemplateURL         string // URL для скачивания snort.tpl
+	EnableShieldMatrix       bool   // Включить обновление Shield Matrix (Kerio 9.5+)
+	ShieldMatrixBaseURL      string // Базовый URL для Shield Matrix (без /version)
+	ShieldMatrixPreloadFiles bool   // Предзагружать все файлы Shield Matrix по расписанию
 }
 
 func Load(path string) (*Config, error) {
@@ -73,6 +74,7 @@ func Load(path string) (*Config, error) {
 	viper.SetDefault("SNORT_TEMPLATE_URL", "http://download.kerio.com/control-update/config/v1/snort.tpl")
 	viper.SetDefault("ENABLE_SHIELD_MATRIX", true)
 	viper.SetDefault("SHIELD_MATRIX_BASE_URL", "https://d2akeya8d016xi.cloudfront.net/9.5.0")
+	viper.SetDefault("SHIELD_MATRIX_PRELOAD_FILES", false)
 
 	viper.AutomaticEnv()
 	if err := viper.ReadInConfig(); err != nil {
@@ -102,10 +104,11 @@ func Load(path string) (*Config, error) {
 		EnableIDS5:              viper.GetBool("ENABLE_IDS5"),
 		BitdefenderProxyMode:    viper.GetBool("BITDEFENDER_PROXY_MODE"),
 		BitdefenderProxyBaseURL: viper.GetString("BITDEFENDER_PROXY_BASE_URL"),
-		EnableSnortTemplate:     viper.GetBool("ENABLE_SNORT_TEMPLATE"),
-		SnortTemplateURL:        viper.GetString("SNORT_TEMPLATE_URL"),
-		EnableShieldMatrix:      viper.GetBool("ENABLE_SHIELD_MATRIX"),
-		ShieldMatrixBaseURL:     viper.GetString("SHIELD_MATRIX_BASE_URL"),
+		EnableSnortTemplate:      viper.GetBool("ENABLE_SNORT_TEMPLATE"),
+		SnortTemplateURL:         viper.GetString("SNORT_TEMPLATE_URL"),
+		EnableShieldMatrix:       viper.GetBool("ENABLE_SHIELD_MATRIX"),
+		ShieldMatrixBaseURL:      viper.GetString("SHIELD_MATRIX_BASE_URL"),
+		ShieldMatrixPreloadFiles: viper.GetBool("SHIELD_MATRIX_PRELOAD_FILES"),
 	}, nil
 }
 
@@ -137,6 +140,7 @@ func Save(cfg *Config, path string) error {
 	viper.Set("SNORT_TEMPLATE_URL", cfg.SnortTemplateURL)
 	viper.Set("ENABLE_SHIELD_MATRIX", cfg.EnableShieldMatrix)
 	viper.Set("SHIELD_MATRIX_BASE_URL", cfg.ShieldMatrixBaseURL)
+	viper.Set("SHIELD_MATRIX_PRELOAD_FILES", cfg.ShieldMatrixPreloadFiles)
 
 	// Set config type explicitly if file extension is missing or not supported for writing
 	ext := filepath.Ext(path)

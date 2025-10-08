@@ -68,14 +68,28 @@ func UpdateShieldMatrix(conn *sql.DB, cfg *config.Config, logger *logrus.Logger)
 	remoteVersion := strings.TrimSpace(string(body))
 	logger.Infof("Shield Matrix: remote version: '%s' (current: '%s')", remoteVersion, currentVersion)
 
+	// Проверяем версию и наличие файлов (если включена предзагрузка)
 	if remoteVersion == currentVersion {
-		logger.Info("Shield Matrix: already up to date, no changes needed")
-		db.UpdateShieldMatrixVersion(conn, currentVersion, true, time.Now())
-		return
+		// Версия актуальная
+		if cfg.ShieldMatrixPreloadFiles {
+			// При включенной предзагрузке проверяем наличие файлов
+			if checkShieldMatrixFilesExist(logger) {
+				logger.Info("Shield Matrix: already up to date, all files exist")
+				db.UpdateShieldMatrixVersion(conn, currentVersion, true, time.Now())
+				return
+			}
+			// Файлы отсутствуют, нужно загрузить
+			logger.Warn("Shield Matrix: version is up to date but files are missing, re-downloading...")
+		} else {
+			// При on-demand режиме файлы не нужны
+			logger.Info("Shield Matrix: already up to date, no changes needed")
+			db.UpdateShieldMatrixVersion(conn, currentVersion, true, time.Now())
+			return
+		}
+	} else {
+		// Новая версия доступна
+		logger.Infof("Shield Matrix: new version available: %s -> %s", currentVersion, remoteVersion)
 	}
-
-	// Новая версия доступна
-	logger.Infof("Shield Matrix: new version available: %s -> %s", currentVersion, remoteVersion)
 
 	// Shield Matrix использует модель "загрузка по запросу" (on-demand)
 	// Файлы не скачиваются заранее, а загружаются только когда Kerio Control их запрашивает
@@ -109,7 +123,13 @@ func UpdateShieldMatrix(conn *sql.DB, cfg *config.Config, logger *logrus.Logger)
 		return
 	}
 
-	logger.Info("Shield Matrix: directories prepared, files will be downloaded on-demand when requested by Kerio Control")
+	// Проверяем, нужно ли предзагружать файлы
+	if cfg.ShieldMatrixPreloadFiles {
+		logger.Info("Shield Matrix: preload mode enabled, downloading all files...")
+		PreloadShieldMatrixFiles(cfg, logger)
+	} else {
+		logger.Info("Shield Matrix: directories prepared, files will be downloaded on-demand when requested by Kerio Control")
+	}
 
 	// Обновляем версию в БД
 	logger.Debugf("Shield Matrix: updating version in DB: %s -> %s", currentVersion, remoteVersion)
@@ -118,7 +138,11 @@ func UpdateShieldMatrix(conn *sql.DB, cfg *config.Config, logger *logrus.Logger)
 		return
 	}
 
-	logger.Infof("Shield Matrix: successfully updated to version %s (DB updated, directories ready)", remoteVersion)
+	if cfg.ShieldMatrixPreloadFiles {
+		logger.Infof("Shield Matrix: successfully updated to version %s (DB updated, all files preloaded)", remoteVersion)
+	} else {
+		logger.Infof("Shield Matrix: successfully updated to version %s (DB updated, directories ready)", remoteVersion)
+	}
 }
 
 // DownloadShieldMatrixFile загружает один файл Shield Matrix по запросу
@@ -172,4 +196,79 @@ func DownloadShieldMatrixFile(subpath string, cfg *config.Config, logger *logrus
 
 	logger.Infof("Shield Matrix: successfully downloaded %s (%d bytes) -> %s", subpath, written, savePath)
 	return nil
+}
+
+// checkShieldMatrixFilesExist проверяет существование всех необходимых файлов Shield Matrix
+// Возвращает true если все файлы threat_data_1.dat до threat_data_5.dat существуют для IPv4 и IPv6
+func checkShieldMatrixFilesExist(logger *logrus.Logger) bool {
+	logger.Debug("Shield Matrix: checking if all files exist...")
+
+	allFilesExist := true
+	missingFiles := []string{}
+
+	// Проверка IPv4 файлов
+	for i := 1; i <= 5; i++ {
+		filePath := filepath.Join("mirror", "matrix", fmt.Sprintf("ipv4/threat_data_%d.dat", i))
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			missingFiles = append(missingFiles, filePath)
+			allFilesExist = false
+		}
+	}
+
+	// Проверка IPv6 файлов
+	for i := 1; i <= 5; i++ {
+		filePath := filepath.Join("mirror", "matrix", fmt.Sprintf("ipv6/threat_data_%d.dat", i))
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			missingFiles = append(missingFiles, filePath)
+			allFilesExist = false
+		}
+	}
+
+	if !allFilesExist {
+		logger.Warnf("Shield Matrix: missing files detected: %v", missingFiles)
+		return false
+	}
+
+	logger.Debug("Shield Matrix: all files exist")
+	return true
+}
+
+// PreloadShieldMatrixFiles загружает все файлы Shield Matrix заранее (по расписанию)
+// Скачивает файлы threat_data_1.dat до threat_data_5.dat для IPv4 и IPv6
+func PreloadShieldMatrixFiles(cfg *config.Config, logger *logrus.Logger) {
+	logger.Info("Shield Matrix: starting preload of all files...")
+
+	totalFiles := 0
+	ipv4Files := 0
+	ipv6Files := 0
+
+	// Загрузка IPv4 файлов
+	logger.Debug("Shield Matrix: preloading IPv4 threat data files...")
+	for i := 1; i <= 5; i++ { // Shield Matrix использует файлы threat_data_1.dat до threat_data_5.dat
+		subpath := fmt.Sprintf("ipv4/threat_data_%d.dat", i)
+		err := DownloadShieldMatrixFile(subpath, cfg, logger)
+		if err != nil {
+			// Если получили ошибку (скорее всего 404), прекращаем загрузку IPv4
+			logger.Debugf("Shield Matrix: stopped IPv4 preload at file %d (error: %v)", i, err)
+			break
+		}
+		ipv4Files++
+		totalFiles++
+	}
+
+	// Загрузка IPv6 файлов
+	logger.Debug("Shield Matrix: preloading IPv6 threat data files...")
+	for i := 1; i <= 5; i++ { // Shield Matrix использует файлы threat_data_1.dat до threat_data_5.dat
+		subpath := fmt.Sprintf("ipv6/threat_data_%d.dat", i)
+		err := DownloadShieldMatrixFile(subpath, cfg, logger)
+		if err != nil {
+			// Если получили ошибку (скорее всего 404), прекращаем загрузку IPv6
+			logger.Debugf("Shield Matrix: stopped IPv6 preload at file %d (error: %v)", i, err)
+			break
+		}
+		ipv6Files++
+		totalFiles++
+	}
+
+	logger.Infof("Shield Matrix: preload completed - %d files total (IPv4: %d, IPv6: %d)", totalFiles, ipv4Files, ipv6Files)
 }
