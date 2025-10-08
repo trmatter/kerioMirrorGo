@@ -205,8 +205,18 @@
           </div>
           <div class="mb-3">
             <label class="form-label">Shield Matrix Base URL</label>
-            <input type="text" class="form-control" name="ShieldMatrixBaseURL" value="{{.Config.ShieldMatrixBaseURL}}" placeholder="https://d2akeya8d016xi.cloudfront.net/9.5.0">
-            <div class="form-text">Base URL for Shield Matrix (CloudFront endpoint, without /version)</div>
+            <input type="text" class="form-control" name="ShieldMatrixBaseURL" value="{{.Config.ShieldMatrixBaseURL}}" placeholder="https://shieldmatrix-updates.gfikeriocontrol.com/check_update/">
+            <div class="form-text">Base URL for Shield Matrix check_update endpoint</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Shield Matrix Client ID</label>
+            <input type="text" class="form-control" name="ShieldMatrixClientID" value="{{.Config.ShieldMatrixClientID}}" placeholder="control">
+            <div class="form-text">Client ID for Shield Matrix requests (например "control")</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Shield Matrix Version</label>
+            <input type="text" class="form-control" name="ShieldMatrixVersion" value="{{.Config.ShieldMatrixVersion}}" placeholder="9.5.0">
+            <div class="form-text">Версия Kerio для Shield Matrix (например, "9.5.0")</div>
           </div>
         </div>
 

@@ -128,7 +128,9 @@ The application reads its configuration from `config.yaml`. All settings can als
 | `BITDEFENDER_PROXY_MODE` | Enable proxy mode with caching | `false` |
 | `BITDEFENDER_PROXY_BASE_URL` | Upstream URL for proxy mode | `https://upgrade.bitdefender.com` |
 | `ENABLE_SHIELD_MATRIX` | Enable Shield Matrix for Kerio 9.5+ | `true` |
-| `SHIELD_MATRIX_BASE_URL` | CloudFront base URL for Shield Matrix | `https://d2akeya8d016xi.cloudfront.net/9.5.0` |
+| `SHIELD_MATRIX_BASE_URL` | Base URL for Shield Matrix check_update endpoint | `https://shieldmatrix-updates.gfikeriocontrol.com/check_update/` |
+| `SHIELD_MATRIX_CLIENT_ID` | Client ID for Shield Matrix requests | `control` |
+| `SHIELD_MATRIX_VERSION` | Kerio Control version for Shield Matrix | `9.5.0` |
 | `SHIELD_MATRIX_PRELOAD_FILES` | Preload all Shield Matrix files on schedule | `false` |
 | `ENABLE_SNORT_TEMPLATE` | Enable Snort template updates (IDS5) | `true` |
 | `SNORT_TEMPLATE_URL` | Snort template download URL | `http://download.kerio.com/control-update/config/v1/snort.tpl` |
@@ -164,7 +166,9 @@ BITDEFENDER_URLS: []
 
 # Shield Matrix Settings (Kerio 9.5+)
 ENABLE_SHIELD_MATRIX: true
-SHIELD_MATRIX_BASE_URL: https://d2akeya8d016xi.cloudfront.net/9.5.0
+SHIELD_MATRIX_BASE_URL: https://shieldmatrix-updates.gfikeriocontrol.com/check_update/
+SHIELD_MATRIX_CLIENT_ID: control
+SHIELD_MATRIX_VERSION: 9.5.0
 SHIELD_MATRIX_PRELOAD_FILES: false  # Set to true to preload all files on schedule
 
 # Snort Template Settings
@@ -273,37 +277,42 @@ Shield Matrix provides advanced threat detection for Kerio Control 9.5 and above
 4. **File Integrity Check**: When preload mode is enabled, checks for missing files and re-downloads if needed
 5. **CloudFront Proxy**: Intercepts CloudFront requests and serves from local cache
 
-**Requests and respones:**
-request:
-https://shieldmatrix-updates.gfikeriocontrol.com/check_update/?client-id=control&version=9.5.0&last-update=0
-response:
-{"available": true, "url": "https://d2akeya8d016xi.cloudfront.net/9.5.0/"}
+**Update Protocol:**
 
-request:
-`https://d2akeya8d016xi.cloudfront.net/9.5.0/version`
-response:
-version file with version content:
-1759878869
+Shield Matrix uses a two-step update protocol:
 
-request:
-`https://d2akeya8d016xi.cloudfront.net/9.5.0/ipv4/threat_data_1.dat`
-response file:
-threat_data_1.dat
-...
-request:
-`https://d2akeya8d016xi.cloudfront.net/9.5.0/ipv4/threat_data_5.dat`
-response file:
-threat_data_5.dat
+1. **Check for updates:**
+   ```
+   Request:
+   GET https://shieldmatrix-updates.gfikeriocontrol.com/check_update/?client-id=control&version=9.5.0&last-update=0
 
-request:
-`https://d2akeya8d016xi.cloudfront.net/9.5.0/ipv6/threat_data_1.dat`
-response file:
-threat_data_1.dat
-...
-request:
-`https://d2akeya8d016xi.cloudfront.net/9.5.0/ipv6/threat_data_5.dat`
-response file:
-threat_data_5.dat
+   Response:
+   {"available": true, "url": "https://d2akeya8d016xi.cloudfront.net/9.5.0/"}
+   ```
+
+2. **Get version from CloudFront:**
+   ```
+   Request:
+   GET https://d2akeya8d016xi.cloudfront.net/9.5.0/version
+
+   Response:
+   1759878869
+   ```
+
+3. **Download threat data files (on-demand or preload):**
+   ```
+   IPv4 files:
+   GET https://d2akeya8d016xi.cloudfront.net/9.5.0/ipv4/threat_data_1.dat
+   GET https://d2akeya8d016xi.cloudfront.net/9.5.0/ipv4/threat_data_2.dat
+   ...
+   GET https://d2akeya8d016xi.cloudfront.net/9.5.0/ipv4/threat_data_5.dat
+
+   IPv6 files:
+   GET https://d2akeya8d016xi.cloudfront.net/9.5.0/ipv6/threat_data_1.dat
+   GET https://d2akeya8d016xi.cloudfront.net/9.5.0/ipv6/threat_data_2.dat
+   ...
+   GET https://d2akeya8d016xi.cloudfront.net/9.5.0/ipv6/threat_data_5.dat
+   ```
 
 **Supported Files:**
 - IPv4: `threat_data_1.dat` to `threat_data_5.dat` (5 files)
@@ -313,7 +322,9 @@ threat_data_5.dat
 **Configuration:**
 ```yaml
 ENABLE_SHIELD_MATRIX: true
-SHIELD_MATRIX_BASE_URL: https://d2akeya8d016xi.cloudfront.net/9.5.0
+SHIELD_MATRIX_BASE_URL: https://shieldmatrix-updates.gfikeriocontrol.com/check_update/
+SHIELD_MATRIX_CLIENT_ID: control
+SHIELD_MATRIX_VERSION: 9.5.0
 SHIELD_MATRIX_PRELOAD_FILES: false  # true = preload all files, false = on-demand
 ```
 

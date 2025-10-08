@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS snort_template (
 CREATE TABLE IF NOT EXISTS shield_matrix (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   version TEXT,
+  cloudfront_url TEXT,
   last_update_success BOOLEAN DEFAULT 0,
   last_success_update_at DATETIME
 );
@@ -67,6 +68,7 @@ CREATE TABLE IF NOT EXISTS shield_matrix (
 	_, _ = db.Exec(`ALTER TABLE ids_versions ADD COLUMN last_success_update_at DATETIME`)
 	_, _ = db.Exec(`ALTER TABLE bitdefender ADD COLUMN last_update_success BOOLEAN DEFAULT 0`)
 	_, _ = db.Exec(`ALTER TABLE bitdefender ADD COLUMN last_success_update_at DATETIME`)
+	_, _ = db.Exec(`ALTER TABLE shield_matrix ADD COLUMN cloudfront_url TEXT`)
 
 	return nil
 }

@@ -191,6 +191,22 @@ func UpdateShieldMatrixVersion(db *sql.DB, version string, success bool, lastSuc
 	return err
 }
 
+// UpdateShieldMatrixVersionWithURL обновляет версию, CloudFront URL и статус обновления для Shield Matrix
+func UpdateShieldMatrixVersionWithURL(db *sql.DB, version string, cloudFrontURL string, success bool, lastSuccessAt time.Time) error {
+	_, err := db.Exec(`INSERT OR REPLACE INTO shield_matrix(id, version, cloudfront_url, last_update_success, last_success_update_at) VALUES(1, ?, ?, ?, ?)`, version, cloudFrontURL, success, lastSuccessAt)
+	return err
+}
+
+// GetShieldMatrixCloudFrontURL returns CloudFront URL for Shield Matrix from DB
+func GetShieldMatrixCloudFrontURL(db *sql.DB) string {
+	var url sql.NullString
+	err := db.QueryRow(`SELECT cloudfront_url FROM shield_matrix WHERE id = 1`).Scan(&url)
+	if err != nil || !url.Valid {
+		return ""
+	}
+	return url.String
+}
+
 // GetShieldMatrixUpdateStatus возвращает статус последнего обновления и дату последнего удачного обновления для Shield Matrix
 func GetShieldMatrixUpdateStatus(db *sql.DB) (bool, string, error) {
 	var success bool

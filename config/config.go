@@ -35,7 +35,9 @@ type Config struct {
 	EnableSnortTemplate      bool   // Включить обновление шаблона Snort для IPS
 	SnortTemplateURL         string // URL для скачивания snort.tpl
 	EnableShieldMatrix       bool     // Включить обновление Shield Matrix (Kerio 9.5+)
-	ShieldMatrixBaseURL      string   // Базовый URL для Shield Matrix (без /version)
+	ShieldMatrixBaseURL      string   // Базовый URL для проверки обновлений Shield Matrix (check_update endpoint)
+	ShieldMatrixClientID     string   // Client ID для Shield Matrix (по умолчанию "control")
+	ShieldMatrixVersion      string   // Версия Kerio Control для Shield Matrix (например, "9.5.0")
 	ShieldMatrixPreloadFiles bool     // Предзагружать все файлы Shield Matrix по расписанию
 	AllowedIPs               []string // Разрешенные IP адреса (whitelist)
 	BlockedIPs               []string // Заблокированные IP адреса (blacklist)
@@ -75,7 +77,9 @@ func Load(path string) (*Config, error) {
 	viper.SetDefault("ENABLE_SNORT_TEMPLATE", true)
 	viper.SetDefault("SNORT_TEMPLATE_URL", "http://download.kerio.com/control-update/config/v1/snort.tpl")
 	viper.SetDefault("ENABLE_SHIELD_MATRIX", true)
-	viper.SetDefault("SHIELD_MATRIX_BASE_URL", "https://d2akeya8d016xi.cloudfront.net/9.5.0")
+	viper.SetDefault("SHIELD_MATRIX_BASE_URL", "https://shieldmatrix-updates.gfikeriocontrol.com/check_update/")
+	viper.SetDefault("SHIELD_MATRIX_CLIENT_ID", "control")
+	viper.SetDefault("SHIELD_MATRIX_VERSION", "9.5.0")
 	viper.SetDefault("SHIELD_MATRIX_PRELOAD_FILES", false)
 	viper.SetDefault("ALLOWED_IPS", []string{})
 	viper.SetDefault("BLOCKED_IPS", []string{})
@@ -112,6 +116,8 @@ func Load(path string) (*Config, error) {
 		SnortTemplateURL:         viper.GetString("SNORT_TEMPLATE_URL"),
 		EnableShieldMatrix:       viper.GetBool("ENABLE_SHIELD_MATRIX"),
 		ShieldMatrixBaseURL:      viper.GetString("SHIELD_MATRIX_BASE_URL"),
+		ShieldMatrixClientID:     viper.GetString("SHIELD_MATRIX_CLIENT_ID"),
+		ShieldMatrixVersion:      viper.GetString("SHIELD_MATRIX_VERSION"),
 		ShieldMatrixPreloadFiles: viper.GetBool("SHIELD_MATRIX_PRELOAD_FILES"),
 		AllowedIPs:               viper.GetStringSlice("ALLOWED_IPS"),
 		BlockedIPs:               viper.GetStringSlice("BLOCKED_IPS"),
@@ -146,6 +152,8 @@ func Save(cfg *Config, path string) error {
 	viper.Set("SNORT_TEMPLATE_URL", cfg.SnortTemplateURL)
 	viper.Set("ENABLE_SHIELD_MATRIX", cfg.EnableShieldMatrix)
 	viper.Set("SHIELD_MATRIX_BASE_URL", cfg.ShieldMatrixBaseURL)
+	viper.Set("SHIELD_MATRIX_CLIENT_ID", cfg.ShieldMatrixClientID)
+	viper.Set("SHIELD_MATRIX_VERSION", cfg.ShieldMatrixVersion)
 	viper.Set("SHIELD_MATRIX_PRELOAD_FILES", cfg.ShieldMatrixPreloadFiles)
 	viper.Set("ALLOWED_IPS", cfg.AllowedIPs)
 	viper.Set("BLOCKED_IPS", cfg.BlockedIPs)

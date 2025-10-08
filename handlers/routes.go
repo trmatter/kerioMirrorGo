@@ -255,6 +255,8 @@ func settingsPageHandler(cfg *config.Config, embeddedFiles embed.FS) echo.Handle
 			cfg.SnortTemplateURL = c.FormValue("SnortTemplateURL")
 			cfg.EnableShieldMatrix = c.FormValue("EnableShieldMatrix") == "true"
 			cfg.ShieldMatrixBaseURL = c.FormValue("ShieldMatrixBaseURL")
+			cfg.ShieldMatrixClientID = c.FormValue("ShieldMatrixClientID")
+			cfg.ShieldMatrixVersion = c.FormValue("ShieldMatrixVersion")
 			cfg.ShieldMatrixPreloadFiles = c.FormValue("ShieldMatrixPreloadFiles") == "true"
 
 			// Parse allowed IPs
@@ -569,10 +571,19 @@ func shieldMatrixCheckUpdateHandler(cfg *config.Config, logger *logrus.Logger) e
 			})
 		}
 
-		logger.Infof("Shield Matrix: responding with version available, url: %s", cfg.ShieldMatrixBaseURL)
+		// Получаем CloudFront URL из БД
+		cloudFrontURL := db.GetShieldMatrixCloudFrontURL(conn)
+		if cloudFrontURL == "" {
+			logger.Warn("Shield Matrix: CloudFront URL not found in database")
+			return c.JSON(http.StatusOK, map[string]interface{}{
+				"available": false,
+			})
+		}
+
+		logger.Infof("Shield Matrix: responding with version available, url: %s", cloudFrontURL)
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"available": true,
-			"url":       cfg.ShieldMatrixBaseURL,
+			"url":       cloudFrontURL,
 		})
 	}
 }
@@ -673,8 +684,22 @@ func shieldMatrixCloudFrontHandler(cfg *config.Config, logger *logrus.Logger) ec
 			logger.Infof("Shield Matrix CloudFront: file not found locally (%s), initiating on-demand download", subpath)
 			logger.Debugf("Shield Matrix CloudFront: stat error: %v", err)
 
+			// Get CloudFront URL from DB
+			conn, dbErr := sql.Open("sqlite", cfg.DatabasePath)
+			if dbErr != nil {
+				logger.Errorf("Shield Matrix CloudFront: failed to open database: %v", dbErr)
+				return c.String(http.StatusInternalServerError, "500 Internal Server Error")
+			}
+			defer conn.Close()
+
+			cloudFrontURL := db.GetShieldMatrixCloudFrontURL(conn)
+			if cloudFrontURL == "" {
+				logger.Error("Shield Matrix CloudFront: CloudFront URL not found in database")
+				return c.String(http.StatusNotFound, "404 Not found")
+			}
+
 			// Download the file
-			if err := mirror.DownloadShieldMatrixFile(subpath, cfg, logger); err != nil {
+			if err := mirror.DownloadShieldMatrixFile(subpath, cloudFrontURL, cfg, logger); err != nil {
 				logger.Errorf("Shield Matrix CloudFront: failed to download file %s: %v", subpath, err)
 				return c.String(http.StatusNotFound, "404 Not found")
 			}
@@ -880,8 +905,22 @@ func matrixHandler(logger *logrus.Logger) echo.HandlerFunc {
 				return c.String(http.StatusInternalServerError, "500 Internal Server Error")
 			}
 
+			// Get CloudFront URL from DB
+			conn, dbErr := sql.Open("sqlite", cfg.DatabasePath)
+			if dbErr != nil {
+				logger.Errorf("Shield Matrix handler: failed to open database: %v", dbErr)
+				return c.String(http.StatusInternalServerError, "500 Internal Server Error")
+			}
+			defer conn.Close()
+
+			cloudFrontURL := db.GetShieldMatrixCloudFrontURL(conn)
+			if cloudFrontURL == "" {
+				logger.Error("Shield Matrix handler: CloudFront URL not found in database")
+				return c.String(http.StatusNotFound, "404 Not found")
+			}
+
 			// Download the file
-			if err := mirror.DownloadShieldMatrixFile(filePath, cfg, logger); err != nil {
+			if err := mirror.DownloadShieldMatrixFile(filePath, cloudFrontURL, cfg, logger); err != nil {
 				logger.Errorf("Shield Matrix handler: failed to download file %s: %v", filePath, err)
 				return c.String(http.StatusNotFound, "404 Not found")
 			}
