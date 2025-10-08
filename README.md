@@ -37,6 +37,7 @@ Download the latest release for your platform from the [Releases](https://github
 ### Build from Source
 
 **Prerequisites:**
+
 - Go 1.24.x or higher
 
 **Clone and build:**
@@ -61,33 +62,39 @@ Default config path is `config.yaml` if not specified.
 
 The project includes comprehensive test coverage for key components.
 
-### Run all tests:
+### Run all tests
+
 ```bash
 go test ./...
 ```
 
-### Run tests with verbose output:
+### Run tests with verbose output
+
 ```bash
 go test ./... -v
 ```
 
-### Run tests with coverage report:
+### Run tests with coverage report
+
 ```bash
 go test ./... -cover
 ```
 
-### Generate HTML coverage report:
+### Generate HTML coverage report
+
 ```bash
 go test ./... -coverprofile=coverage.out
 go tool cover -html=coverage.out -o coverage.html
 ```
 
-### Run benchmarks:
+### Run benchmarks
+
 ```bash
 go test ./... -bench=. -benchmem
 ```
 
-### Using Makefile (if make is available):
+### Using Makefile (if make is available)
+
 ```bash
 make test              # Run all tests
 make test-coverage     # Run with coverage
@@ -101,14 +108,11 @@ To run the application as a Windows service using NSSM (Non-Sucking Service Mana
 
 1. Download and install NSSM from [nssm.cc](https://nssm.cc/download).
 2. Open a command prompt as Administrator.
-3. Run the following command to install the service:
-4. `nssm install kerio-mirror-go "C:\path\to\kerio-mirror-go.exe"`
-5. Configure the service settings as needed (e.g., startup type, log paths).
-6. Start the service:
-7. `nssm start kerio-mirror-go`
-8. Verify that the service is running:
-9. `nssm status kerio-mirror-go`
-10. Access the dashboard at `http://localhost`.
+3. Run the following command to install the service: `nssm install kerio-mirror-go "C:\path\to\kerio-mirror-go.exe"`
+4. Configure the service settings as needed (e.g., startup type, log paths).
+5. Start the service: `nssm start kerio-mirror-go`
+6. Verify that the service is running: `nssm status kerio-mirror-go`
+7. Access the dashboard at `http://localhost`.
 
 ## Configuration
 
@@ -202,21 +206,25 @@ RETRY_DELAY_SECONDS: 10
 To use the mirror server, configure your DNS server to point the following hostnames to your mirror server IP:
 
 **Required DNS entries:**
+
 - `ids-update.kerio.com` → Your mirror server IP
 - `update.kerio.com` → Your mirror server IP
 - `updates.kerio.com` → Your mirror server IP
 - `download.kerio.com` → Your mirror server IP
 
 **For Bitdefender (if enabled):**
+
 - `bdupdate.kerio.com` → Your mirror server IP
 - `bda-update.kerio.com` → Your mirror server IP
 
 **For Shield Matrix (Kerio 9.5+):**
+
 - `shieldmatrix-updates.gfikeriocontrol.com` → Your mirror server IP
 - `d2akeya8d016xi.cloudfront.net` → Your mirror server IP
 
 **Example DNS configuration:**
-```
+
+```dns
 ids-update.kerio.com.        IN A    192.168.1.100
 update.kerio.com.            IN A    192.168.1.100
 updates.kerio.com.           IN A    192.168.1.100
@@ -234,6 +242,7 @@ Replace `192.168.1.100` with your actual mirror server IP address.
 Access the web interface at `http://localhost/` (or `https://localhost/` if HTTPS is configured with `cert.pem` and `key.pem`).
 
 **Available Routes:**
+
 - `/` - Dashboard showing update status and versions
 - `/settings` - Configuration management
 - `/logs` - View application logs
@@ -250,6 +259,7 @@ Access the web interface at `http://localhost/` (or `https://localhost/` if HTTP
 ### File Storage
 
 Downloaded files are stored in the `mirror/` directory:
+
 - `mirror/` - IDS files and signatures
 - `mirror/bitdefender/` - Bitdefender databases (or cache if proxy mode)
 - `mirror/geo/` - GeoIP CSV files
@@ -261,16 +271,20 @@ Downloaded files are stored in the `mirror/` directory:
 The application supports three Bitdefender modes via the `BITDEFENDER_MODE` setting:
 
 **1. Disabled Mode (`"disabled"`)**:
+
 - Bitdefender updates are completely disabled
 - No Bitdefender files are downloaded or served
 
 **2. Mirror Mode (`"mirror"`)**:
+
 - Downloads Bitdefender databases from configured URLs
 - Files are stored locally in `mirror/bitdefender/`
 - Scheduled updates download new versions
 
 **3. Proxy Mode (`"proxy"`)**:
-- Server acts as a caching proxy for Bitdefender updates:
+
+Server acts as a caching proxy for Bitdefender updates:
+
 1. Requests to Bitdefender URLs are forwarded to `BITDEFENDER_PROXY_BASE_URL`
 2. Responses are cached locally in `mirror/bitdefender/`
 3. Subsequent requests are served from cache
@@ -281,6 +295,7 @@ The application supports three Bitdefender modes via the `BITDEFENDER_MODE` sett
 Shield Matrix provides advanced threat detection for Kerio Control 9.5 and above:
 
 **How it works:**
+
 1. **Version Check**: Periodically checks CloudFront for new Shield Matrix version
 2. **Two Download Modes**:
    - **On-Demand** (default): Files downloaded only when Kerio Control requests them
@@ -294,7 +309,8 @@ Shield Matrix provides advanced threat detection for Kerio Control 9.5 and above
 Shield Matrix uses a two-step update protocol:
 
 1. **Check for updates:**
-   ```
+
+   ```text
    Request:
    GET https://shieldmatrix-updates.gfikeriocontrol.com/check_update/?client-id=control&version=9.5.0&last-update=0
 
@@ -303,7 +319,8 @@ Shield Matrix uses a two-step update protocol:
    ```
 
 2. **Get version from CloudFront:**
-   ```
+
+   ```text
    Request:
    GET https://d2akeya8d016xi.cloudfront.net/9.5.0/version
 
@@ -312,7 +329,8 @@ Shield Matrix uses a two-step update protocol:
    ```
 
 3. **Download threat data files (on-demand or preload):**
-   ```
+
+   ```text
    IPv4 files:
    GET https://d2akeya8d016xi.cloudfront.net/9.5.0/ipv4/threat_data_1.dat
    GET https://d2akeya8d016xi.cloudfront.net/9.5.0/ipv4/threat_data_2.dat
@@ -327,11 +345,13 @@ Shield Matrix uses a two-step update protocol:
    ```
 
 **Supported Files:**
+
 - IPv4: `threat_data_1.dat` to `threat_data_5.dat` (5 files)
 - IPv6: `threat_data_1.dat` to `threat_data_5.dat` (5 files)
 - Total: 10 files per version
 
 **Configuration:**
+
 ```yaml
 ENABLE_SHIELD_MATRIX: true
 SHIELD_MATRIX_BASE_URL: https://shieldmatrix-updates.gfikeriocontrol.com/check_update/
@@ -348,8 +368,10 @@ SHIELD_MATRIX_PRELOAD_FILES: false  # true = preload all files, false = on-deman
 | **Preload** (`true`) | All 10 files downloaded on schedule | Slow/limited internet, offline environments |
 
 **DNS Configuration:**
+
 To use Shield Matrix, configure your DNS to point CloudFront domain to your mirror server:
-```
+
+```dns
 d2akeya8d016xi.cloudfront.net. IN A 192.168.1.100
 ```
 
@@ -360,6 +382,7 @@ The version number in the URL (9.5.0) corresponds to the Kerio Control version.
 The application supports IP-based access control with both whitelist and blacklist functionality:
 
 **Features:**
+
 - ✅ Whitelist mode: Only allow specific IPs
 - ❌ Blacklist mode: Block specific IPs
 - 🌐 CIDR notation support (e.g., `192.168.1.0/24`)
@@ -368,6 +391,7 @@ The application supports IP-based access control with both whitelist and blackli
 - 📝 Detailed logging of blocked access attempts
 
 **Configuration:**
+
 ```yaml
 ALLOWED_IPS:
   - 192.168.1.100      # Single IP
@@ -380,16 +404,20 @@ BLOCKED_IPS:
 ```
 
 **Access Logic:**
+
 1. If IP is in `BLOCKED_IPS` → **403 Forbidden** (blacklist takes priority)
 2. If `ALLOWED_IPS` is set and IP is NOT in list → **403 Forbidden**
 3. If both lists are empty → **Allow all** (no restrictions)
 
 **Web Configuration:**
+
 IP access control can be configured via the web interface at `/settings` under the "IP Access Control" section. Enter one IP or CIDR range per line.
 
 **Logging:**
+
 All blocked access attempts are logged with warning level:
-```
+
+```log
 WARN[0123] IP filter: blocked IP 203.0.113.50 attempting to access /update.php
 WARN[0124] IP filter: unauthorized IP 1.2.3.4 attempting to access /
 ```
@@ -419,16 +447,19 @@ The project includes automated release scripts for version tagging:
 ### Release Scripts
 
 **For Windows (`release.bat`):**
+
 ```batch
 release.bat [major|minor|patch|specific_version]
 ```
 
 **For Unix/Linux/macOS (`release.sh`):**
+
 ```bash
 ./release.sh [major|minor|patch|specific_version]
 ```
 
 **Features:**
+
 - ✅ Automatic version incrementing (major, minor, patch)
 - ✅ Custom version support (e.g., `release.sh v1.2.3`)
 - ✅ Git repository validation
@@ -437,6 +468,7 @@ release.bat [major|minor|patch|specific_version]
 - ✅ Automatic tag pushing to remote
 
 **Examples:**
+
 ```bash
 # Increment patch version (1.0.0 → 1.0.1)
 ./release.sh patch
@@ -452,6 +484,7 @@ release.bat [major|minor|patch|specific_version]
 ```
 
 **Requirements:**
+
 - Git must be installed
 - Must be run in a Git repository
 - No uncommitted changes allowed
@@ -461,7 +494,7 @@ release.bat [major|minor|patch|specific_version]
 
 ### Project Structure
 
-```
+```text
 kerioMirrorGo/
 ├── cmd/server/          # Main application entry point
 ├── config/              # Configuration management
@@ -495,6 +528,7 @@ kerioMirrorGo/
 ### CI/CD
 
 The project uses GitHub Actions for:
+
 - Multi-platform builds (Linux, Windows, macOS)
 - Automated testing with coverage reports
 - Automatic release creation on version tags
