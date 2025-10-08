@@ -69,7 +69,8 @@ func main() {
 	go func() {
 		defer wg.Done()
 		if err := e.Start(":80"); err != nil {
-			if strings.Contains(err.Error(), "address already in use") {
+			errMsg := err.Error()
+			if strings.Contains(errMsg, "address already in use") || strings.Contains(errMsg, "Only one usage of each socket address") {
 				logger.Error("========================================")
 				logger.Error("PORT 80 IS ALREADY IN USE")
 				logger.Error("========================================")
@@ -96,7 +97,8 @@ func main() {
 	go func() {
 		defer wg.Done()
 		if err := e.StartTLS(":443", "cert.pem", "key.pem"); err != nil {
-			if strings.Contains(err.Error(), "address already in use") {
+			errMsg := err.Error()
+			if strings.Contains(errMsg, "address already in use") || strings.Contains(errMsg, "Only one usage of each socket address") {
 				logger.Error("========================================")
 				logger.Error("PORT 443 IS ALREADY IN USE")
 				logger.Error("========================================")
