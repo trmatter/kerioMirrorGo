@@ -7,71 +7,267 @@
   <link href="/static/bootstrap/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/static/font/bootstrap-icons.min.css">
   <style>
-    .section-title { display: flex; align-items: center; gap: 0.5em; }
-    .ids-badge { font-size: 1.1em; }
-    .footer { text-align: center; color: #888; margin-top: 2em; font-size: 0.95em; }
-    @media (max-width: 600px) {
-      .list-group-horizontal { flex-direction: column; }
+    :root {
+      --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      --danger-gradient: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+      --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
     }
+
+    body {
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+    }
+
+    .stat-card {
+      border: none;
+      border-radius: 15px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      overflow: hidden;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+
+    .stat-card-header {
+      padding: 1.5rem;
+      color: white;
+      border: none;
+    }
+
+    .stat-card-body {
+      padding: 1.5rem;
+    }
+
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: bold;
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 0.875rem;
+      opacity: 0.9;
+      margin-top: 0.5rem;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+      font-weight: 600;
+      color: #2d3748;
+    }
+
+    .ids-badge {
+      font-size: 1.1em;
+      padding: 0.5em 0.75em;
+      border-radius: 8px;
+    }
+
+    .footer {
+      text-align: center;
+      color: #888;
+      margin-top: 2em;
+      font-size: 0.95em;
+      padding: 2rem 0;
+    }
+
     .ids-disabled {
       opacity: 0.5;
       background: #f8f9fa !important;
       pointer-events: none;
     }
+
+    .card {
+      border: none;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+
+    .card-header {
+      background: var(--primary-gradient);
+      color: white;
+      border: none;
+      border-radius: 15px 15px 0 0 !important;
+      padding: 1rem 1.5rem;
+      font-weight: 600;
+    }
+
+    .progress {
+      height: 8px;
+      border-radius: 10px;
+      background-color: #e9ecef;
+    }
+
+    .progress-bar {
+      border-radius: 10px;
+      transition: width 0.6s ease;
+    }
+
+    .alert-primary {
+      background: var(--primary-gradient);
+      border: none;
+      color: white;
+      border-radius: 15px;
+    }
+
+    .btn {
+      border-radius: 10px;
+      padding: 0.75rem 1.5rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+
+    .list-group-item {
+      border: none;
+      border-bottom: 1px solid #f0f0f0;
+      padding: 1rem 0;
+    }
+
+    .list-group-item:last-child {
+      border-bottom: none;
+    }
+
+    .badge-lg {
+      font-size: 0.95rem;
+      padding: 0.5rem 1rem;
+    }
+
+    .mode-badge {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 5px;
+      margin-left: 0.5rem;
+    }
+
+    .collapse-toggle {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .collapse-toggle:hover {
+      opacity: 0.8;
+    }
+
+    @media (max-width: 768px) {
+      .stat-number {
+        font-size: 2rem;
+      }
+
+      .stat-card-header, .stat-card-body {
+        padding: 1rem;
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.5s ease;
+    }
   </style>
 </head>
-<body class="bg-light">
-<div class="container py-5">
-  <!-- Информационная панель -->
-  <div class="row mb-4">
+<body>
+<div class="container py-4 py-md-5">
+  <!-- Header Alert -->
+  <div class="row mb-4 fade-in">
     <div class="col-12">
-      <div class="alert alert-primary d-flex align-items-center shadow-sm" role="alert">
+      <div class="alert alert-primary d-flex align-items-center shadow" role="alert">
         <i class="bi bi-speedometer2 fs-2 me-3"></i>
-        <div>
-          <h4 class="alert-heading mb-1">{{.ServiceName}} <span class="fs-6 text-muted">Dashboard</span></h4>
-          <div><i class="bi bi-clock-history"></i> <strong>Current time:</strong> {{.CurrentTime}}</div>
-          <div><i class="bi bi-arrow-repeat"></i> <strong>Last update:</strong> {{.LastUpdate}}</div>
+        <div class="flex-grow-1">
+          <h4 class="alert-heading mb-1">{{.ServiceName}} <span class="fs-6" style="opacity: 0.9;">Dashboard</span></h4>
+          <div class="small"><i class="bi bi-clock-history"></i> <strong>Current time:</strong> {{.CurrentTime}}</div>
+          <div class="small"><i class="bi bi-arrow-repeat"></i> <strong>Last update:</strong> {{.LastUpdate}}</div>
+          <div class="small"><i class="bi bi-calendar-event"></i> <strong>Next scheduled:</strong> {{.Config.ScheduleTime}} daily</div>
         </div>
       </div>
     </div>
   </div>
-  <div class="row g-4">
-    <div class="col-md-6">
-      <div class="card shadow-sm mb-4">
-        <div class="card-body">
-          <h5 class="section-title mb-3"><i class="bi bi-gear"></i> Config</h5>
-          <ul class="list-group list-group-flush mb-3">
-            <li class="list-group-item"><strong>Database Path:</strong> {{.Config.DatabasePath}}</li>
-            <li class="list-group-item"><strong>Log Path:</strong> {{.Config.LogPath}}</li>
-            <li class="list-group-item"><strong>Proxy URL:</strong> {{.Config.ProxyURL}}</li>
-            <li class="list-group-item"><strong>License Number:</strong>
-              {{if not .Config.LicenseNumber}}
-              <span class="text-warning">Not configured. Please add your license number in settings.</span>
-              {{else}}
-              {{.Config.LicenseNumber}}
-              {{end}}
-            </li>
-          </ul>
-          <h6 class="mt-3 mb-2 text-secondary"><i class="bi bi-arrow-repeat"></i> Retry Settings</h6>
-          <ul class="list-group list-group-flush mb-3">
-            <li class="list-group-item"><strong>Retry Count:</strong> {{.Config.RetryCount}}</li>
-            <li class="list-group-item"><strong>Retry Delay (sec):</strong> {{.Config.RetryDelaySeconds}}</li>
-          </ul>
-          <h6 class="mt-3 mb-2 text-secondary"><i class="bi bi-globe2"></i> Geo & WebFilter</h6>
-          <ul class="list-group list-group-flush">
-            <li class="list-group-item"><strong>WebFilter API:</strong> {{.Config.WebFilterAPI}}</li>
-            <li class="list-group-item"><strong>GeoIP4 URL:</strong> {{.Config.GeoIP4URL}}</li>
-            <li class="list-group-item"><strong>GeoIP6 URL:</strong> {{.Config.GeoIP6URL}}</li>
-            <li class="list-group-item"><strong>GeoLoc URL:</strong> {{.Config.GeoLocURL}}</li>
-          </ul>
+
+  <!-- Statistics Cards -->
+  <div class="row g-3 mb-4 fade-in">
+    <!-- Active Components -->
+    <div class="col-md-4">
+      <div class="stat-card shadow">
+        <div class="stat-card-header" style="background: var(--info-gradient);">
+          <i class="bi bi-toggles fs-3"></i>
+        </div>
+        <div class="stat-card-body text-center">
+          <div class="stat-number text-info">{{.ActiveComponents}}</div>
+          <div class="stat-label text-muted">Active Components</div>
         </div>
       </div>
     </div>
-    <div class="col-md-6">
-      <div class="card shadow-sm mb-4">
+
+    <!-- Successful Updates -->
+    <div class="col-md-4">
+      <div class="stat-card shadow">
+        <div class="stat-card-header" style="background: var(--success-gradient);">
+          <i class="bi bi-check-circle fs-3"></i>
+        </div>
+        <div class="stat-card-body text-center">
+          <div class="stat-number text-success">{{.SuccessfulComponents}}</div>
+          <div class="stat-label text-muted">Successful Updates</div>
+          {{if gt .ActiveComponents 0}}
+          <div class="progress mt-2">
+            <div class="progress-bar bg-success" role="progressbar"
+                 style="width: {{.HealthPercentage}}%"></div>
+          </div>
+          {{end}}
+        </div>
+      </div>
+    </div>
+
+    <!-- System Health -->
+    <div class="col-md-4">
+      <div class="stat-card shadow">
+        <div class="stat-card-header" style="background: {{if eq .HealthPercentage 100}}var(--success-gradient){{else}}var(--warning-gradient){{end}};">
+          <i class="bi bi-heart-pulse fs-3"></i>
+        </div>
+        <div class="stat-card-body text-center">
+          <div class="stat-number" style="color: {{if eq .HealthPercentage 100}}#11998e{{else}}#f5576c{{end}};">
+            {{.HealthPercentage}}%
+          </div>
+          <div class="stat-label text-muted">System Health</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="row g-4">
+    <!-- Database Status Section -->
+    <div class="col-lg-8">
+      <div class="card shadow-sm mb-4 fade-in">
+        <div class="card-header">
+          <i class="bi bi-database-check"></i> Database Status
+        </div>
         <div class="card-body">
-          <h5 class="section-title mb-3"><i class="bi bi-shield-lock"></i> IDS Versions</h5>
-          <ul class="list-group list-group mb-3 flex-wrap">
+          <!-- IDS Versions -->
+          <h6 class="section-title mb-3"><i class="bi bi-shield-lock"></i> IDS Databases</h6>
+          <ul class="list-group mb-4">
             {{range $k, $v := .IDSVersions}}
             {{ $enabled := true }}
             {{if eq $k "1"}}{{$enabled = $.Config.EnableIDS1}}{{end}}
@@ -79,80 +275,168 @@
             {{if eq $k "3"}}{{$enabled = $.Config.EnableIDS3}}{{end}}
             {{if eq $k "4"}}{{$enabled = $.Config.EnableIDS4}}{{end}}
             {{if eq $k "5"}}{{$enabled = $.Config.EnableIDS5}}{{end}}
-            <li class="list-group-item d-flex align-items-center flex-column flex-md-row {{if not $enabled}}ids-disabled{{end}}">
-              <div class="me-2">
-                <strong>IDS{{$k}}:</strong>
-                <span class="text-muted small">
-                  {{if eq $k "1"}}IPS/IDS Snort (Windows версия)
-                  {{else if eq $k "2"}}Списки скомпрометированных адресов
-                  {{else if eq $k "3"}}IPS/IDS Snort (версия для Linux до 9.5)
-                  {{else if eq $k "4"}}Базы данных GeoIP
-                  {{else if eq $k "5"}}IPS/IDS Snort (версия для Linux с 9.5)
+            <li class="list-group-item d-flex align-items-center justify-content-between {{if not $enabled}}ids-disabled{{end}}">
+              <div>
+                <strong class="text-primary">IDS{{$k}}</strong>
+                <span class="text-muted small ms-2">
+                  {{if eq $k "1"}}IPS/IDS Snort (Windows)
+                  {{else if eq $k "2"}}Compromised IPs List
+                  {{else if eq $k "3"}}IPS/IDS Snort (Linux <9.5)
+                  {{else if eq $k "4"}}GeoIP Database
+                  {{else if eq $k "5"}}IPS/IDS Snort (Linux ≥9.5)
                     {{if $.Config.EnableSnortTemplate}}
                       + Snort Template
-                      {{if not $.SnortTemplateSuccess}}<i class="bi bi-exclamation-triangle text-warning" title="Snort template update failed"></i>{{end}}
+                      {{if not $.SnortTemplateSuccess}}<i class="bi bi-exclamation-triangle text-warning ms-1" title="Snort template update failed"></i>{{end}}
                     {{end}}
                   {{end}}
-                  {{if not $enabled}}<span class="ms-2"><i class="bi bi-slash-circle"></i> <span class="small">Отключено</span></span>{{end}}
                 </span>
+                {{if not $enabled}}<span class="badge bg-secondary mode-badge">Disabled</span>{{end}}
               </div>
-              <div class="ms-md-auto mt-2 mt-md-0">
+              <div>
                 {{if not (index $.IDSSuccess $k)}}
-                  <span class="badge bg-danger ms-2 ids-badge"><i class="bi bi-x-circle"></i> {{$v}}</span>
+                  <span class="badge bg-danger ids-badge"><i class="bi bi-x-circle"></i> {{$v}}</span>
                 {{else if eq $v 0}}
-                  <span class="badge bg-danger ms-2 ids-badge"><i class="bi bi-x-circle"></i> {{$v}}</span>
+                  <span class="badge bg-danger ids-badge"><i class="bi bi-x-circle"></i> {{$v}}</span>
                 {{else}}
-                  <span class="badge bg-success ms-2 ids-badge"><i class="bi bi-check-circle"></i> {{$v}}</span>
+                  <span class="badge bg-success ids-badge"><i class="bi bi-check-circle"></i> {{$v}}</span>
                 {{end}}
               </div>
             </li>
             {{end}}
           </ul>
-          <h5 class="section-title mb-3"><i class="bi bi-virus2"></i> Bitdefender Database Version</h5>
-          <ul class="list-group list-group mb-3 flex-wrap">
-            <li class="list-group-item d-flex align-items-center {{if not .Config.EnableBitdefender}}ids-disabled{{end}}">
-              {{if not .BitdefenderSuccess}}
-              <span class="badge bg-danger ms-2 ids-badge"><i class="bi bi-x-circle"></i> {{.BitdefenderVer}}</span>
-              {{else if eq .BitdefenderVer 0}}
-              <span class="badge bg-danger ms-2 ids-badge"><i class="bi bi-x-circle"></i> {{.BitdefenderVer}}</span>
-              {{else}}
-              <span class="badge bg-success ms-2 ids-badge"><i class="bi bi-check-circle"></i> {{.BitdefenderVer}}</span>
-              {{end}}
-              <span class="ms-2">
-                <strong>Bitdefender</strong>
-                {{if not .Config.EnableBitdefender}}<span class="ms-2"><i class="bi bi-slash-circle"></i> <span class="small">Отключено</span></span>{{end}}
-              </span>
+
+          <!-- Bitdefender -->
+          <h6 class="section-title mb-3"><i class="bi bi-virus2"></i> Antivirus Database</h6>
+          <ul class="list-group mb-4">
+            <li class="list-group-item d-flex align-items-center justify-content-between {{if not .Config.EnableBitdefender}}ids-disabled{{end}}">
+              <div>
+                <strong class="text-primary">Bitdefender</strong>
+                {{if .Config.BitdefenderProxyMode}}
+                  <span class="badge bg-info mode-badge"><i class="bi bi-arrow-left-right"></i> Proxy Mode</span>
+                {{else}}
+                  <span class="badge bg-primary mode-badge"><i class="bi bi-download"></i> Mirror Mode</span>
+                {{end}}
+                {{if not .Config.EnableBitdefender}}<span class="badge bg-secondary mode-badge">Disabled</span>{{end}}
+              </div>
+              <div>
+                {{if not .BitdefenderSuccess}}
+                <span class="badge bg-danger ids-badge"><i class="bi bi-x-circle"></i> {{.BitdefenderVer}}</span>
+                {{else if eq .BitdefenderVer 0}}
+                <span class="badge bg-danger ids-badge"><i class="bi bi-x-circle"></i> {{.BitdefenderVer}}</span>
+                {{else}}
+                <span class="badge bg-success ids-badge"><i class="bi bi-check-circle"></i> {{.BitdefenderVer}}</span>
+                {{end}}
+              </div>
             </li>
           </ul>
-          <h5 class="section-title mb-3"><i class="bi bi-grid-3x3-gap"></i> Shield Matrix Version</h5>
-          <ul class="list-group list-group mb-3 flex-wrap">
-            <li class="list-group-item d-flex align-items-center {{if not .Config.EnableShieldMatrix}}ids-disabled{{end}}">
-              {{if not .ShieldMatrixSuccess}}
-              <span class="badge bg-danger ms-2 ids-badge"><i class="bi bi-x-circle"></i> {{if .ShieldMatrixVersion}}{{.ShieldMatrixVersion}}{{else}}N/A{{end}}</span>
-              {{else if not .ShieldMatrixVersion}}
-              <span class="badge bg-warning ms-2 ids-badge"><i class="bi bi-exclamation-triangle"></i> N/A</span>
-              {{else}}
-              <span class="badge bg-success ms-2 ids-badge"><i class="bi bi-check-circle"></i> {{.ShieldMatrixVersion}}</span>
-              {{end}}
-              <span class="ms-2">
-                <strong>Shield Matrix</strong> <span class="text-muted small">(Kerio 9.5+)</span>
-                {{if not .Config.EnableShieldMatrix}}<span class="ms-2"><i class="bi bi-slash-circle"></i> <span class="small">Отключено</span></span>{{end}}
-              </span>
+
+          <!-- Shield Matrix -->
+          <h6 class="section-title mb-3"><i class="bi bi-grid-3x3-gap"></i> Threat Intelligence</h6>
+          <ul class="list-group">
+            <li class="list-group-item d-flex align-items-center justify-content-between {{if not .Config.EnableShieldMatrix}}ids-disabled{{end}}">
+              <div>
+                <strong class="text-primary">Shield Matrix</strong>
+                <span class="text-muted small ms-2">(Kerio 9.5+)</span>
+                {{if .Config.ShieldMatrixPreloadFiles}}
+                  <span class="badge bg-success mode-badge"><i class="bi bi-download"></i> Preload Mode</span>
+                {{else}}
+                  <span class="badge bg-warning mode-badge"><i class="bi bi-lightning"></i> On-Demand</span>
+                {{end}}
+                {{if not .Config.EnableShieldMatrix}}<span class="badge bg-secondary mode-badge">Disabled</span>{{end}}
+              </div>
+              <div>
+                {{if not .ShieldMatrixSuccess}}
+                <span class="badge bg-danger ids-badge"><i class="bi bi-x-circle"></i> {{if .ShieldMatrixVersion}}{{.ShieldMatrixVersion}}{{else}}N/A{{end}}</span>
+                {{else if not .ShieldMatrixVersion}}
+                <span class="badge bg-warning ids-badge"><i class="bi bi-exclamation-triangle"></i> N/A</span>
+                {{else}}
+                <span class="badge bg-success ids-badge"><i class="bi bi-check-circle"></i> {{.ShieldMatrixVersion}}</span>
+                {{end}}
+              </div>
             </li>
           </ul>
         </div>
       </div>
     </div>
+
+    <!-- Configuration Section -->
+    <div class="col-lg-4">
+      <div class="card shadow-sm mb-4 fade-in">
+        <div class="card-header collapse-toggle" data-bs-toggle="collapse" data-bs-target="#configCollapse">
+          <i class="bi bi-gear"></i> Configuration
+          <i class="bi bi-chevron-down float-end"></i>
+        </div>
+        <div class="collapse show" id="configCollapse">
+          <div class="card-body">
+            <h6 class="text-secondary mb-3"><i class="bi bi-hdd"></i> System</h6>
+            <ul class="list-group mb-3">
+              <li class="list-group-item">
+                <small class="text-muted">Database</small>
+                <div class="text-break small">{{.Config.DatabasePath}}</div>
+              </li>
+              <li class="list-group-item">
+                <small class="text-muted">Log Path</small>
+                <div class="text-break small">{{.Config.LogPath}}</div>
+              </li>
+              <li class="list-group-item">
+                <small class="text-muted">Proxy</small>
+                <div class="text-break small">{{if .Config.ProxyURL}}{{.Config.ProxyURL}}{{else}}<span class="text-muted">Not configured</span>{{end}}</div>
+              </li>
+              <li class="list-group-item">
+                <small class="text-muted">License</small>
+                <div class="text-break small">
+                  {{if not .Config.LicenseNumber}}
+                  <span class="text-warning"><i class="bi bi-exclamation-triangle"></i> Not configured</span>
+                  {{else}}
+                  {{.Config.LicenseNumber}}
+                  {{end}}
+                </div>
+              </li>
+            </ul>
+
+            <h6 class="text-secondary mb-3"><i class="bi bi-arrow-repeat"></i> Retry Policy</h6>
+            <ul class="list-group mb-3">
+              <li class="list-group-item">
+                <small class="text-muted">Retry Count</small>
+                <div>{{.Config.RetryCount}}</div>
+              </li>
+              <li class="list-group-item">
+                <small class="text-muted">Retry Delay</small>
+                <div>{{.Config.RetryDelaySeconds}}s</div>
+              </li>
+            </ul>
+
+            <h6 class="text-secondary mb-3"><i class="bi bi-globe2"></i> Data Sources</h6>
+            <ul class="list-group">
+              <li class="list-group-item">
+                <small class="text-muted">WebFilter API</small>
+                <div class="text-break small">{{.Config.WebFilterAPI}}</div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="d-flex flex-wrap gap-2 justify-content-center mb-4">
-    <a href="/update" class="btn btn-warning btn-lg shadow"><i class="bi bi-arrow-repeat"></i> Manual Update</a>
-    <a href="/logs" class="btn btn-secondary btn-lg shadow"><i class="bi bi-journal-text"></i> View Logs</a>
-    <a href="/settings" class="btn btn-info btn-lg text-white shadow"><i class="bi bi-sliders"></i> Settings</a>
+
+  <!-- Action Buttons -->
+  <div class="d-flex flex-wrap gap-2 justify-content-center mb-4 fade-in">
+    <a href="/update" class="btn btn-warning btn-lg shadow">
+      <i class="bi bi-arrow-repeat"></i> Manual Update
+    </a>
+    <a href="/logs" class="btn btn-secondary btn-lg shadow">
+      <i class="bi bi-journal-text"></i> View Logs
+    </a>
+    <a href="/settings" class="btn btn-info btn-lg text-white shadow">
+      <i class="bi bi-sliders"></i> Settings
+    </a>
   </div>
-  <div class="footer">
-    &copy; {{.CurrentTime}} &mdash; <span class="text-primary">Kerio Mirror Go</span>
-    <a href="https://github.com/trmatter/kerioMirrorGo" target="_blank" class="text-decoration-none" title="GitHub Repository">
-      <i class="bi bi-github"></i>
+
+  <!-- Footer -->
+  <div class="footer fade-in">
+    &copy; {{.CurrentTime}} &mdash; <span class="text-primary fw-bold">Kerio Mirror Go</span>
+    <a href="https://github.com/trmatter/kerioMirrorGo" target="_blank" class="text-decoration-none text-dark" title="GitHub Repository">
+      <i class="bi bi-github fs-5"></i>
     </a>
     | Powered by Go &amp; Bootstrap
   </div>

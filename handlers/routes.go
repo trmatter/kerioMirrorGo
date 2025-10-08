@@ -40,6 +40,9 @@ type DashboardStatus struct {
 	ShieldMatrixVersion   string // версия Shield Matrix
 	ShieldMatrixSuccess   bool   // успешность Shield Matrix
 	LastUpdate            string
+	ActiveComponents      int // количество активных компонентов
+	SuccessfulComponents  int // количество успешно обновленных компонентов
+	HealthPercentage      int // процент здоровья системы (0-100)
 }
 
 func getDashboardStatus(cfg *config.Config) (*DashboardStatus, error) {
@@ -69,6 +72,59 @@ func getDashboardStatus(cfg *config.Config) (*DashboardStatus, error) {
 	// Получаем время последнего обновления из last_update
 	lastUpdateStr, _ := db.GetLastUpdate(conn)
 
+	// Подсчитываем активные и успешные компоненты
+	activeComponents := 0
+	successfulComponents := 0
+
+	if cfg.EnableIDS1 {
+		activeComponents++
+		if idsSuccess["1"] {
+			successfulComponents++
+		}
+	}
+	if cfg.EnableIDS2 {
+		activeComponents++
+		if idsSuccess["2"] {
+			successfulComponents++
+		}
+	}
+	if cfg.EnableIDS3 {
+		activeComponents++
+		if idsSuccess["3"] {
+			successfulComponents++
+		}
+	}
+	if cfg.EnableIDS4 {
+		activeComponents++
+		if idsSuccess["4"] {
+			successfulComponents++
+		}
+	}
+	if cfg.EnableIDS5 {
+		activeComponents++
+		if idsSuccess["5"] {
+			successfulComponents++
+		}
+	}
+	if cfg.EnableBitdefender {
+		activeComponents++
+		if bitdefenderSuccess {
+			successfulComponents++
+		}
+	}
+	if cfg.EnableShieldMatrix {
+		activeComponents++
+		if shieldMatrixSuccess {
+			successfulComponents++
+		}
+	}
+
+	// Вычисляем процент здоровья
+	healthPercentage := 0
+	if activeComponents > 0 {
+		healthPercentage = (successfulComponents * 100) / activeComponents
+	}
+
 	return &DashboardStatus{
 		ServiceName:          "Kerio Mirror Go",
 		CurrentTime:          time.Now().Format("2006-01-02 15:04:05 MST"),
@@ -81,6 +137,9 @@ func getDashboardStatus(cfg *config.Config) (*DashboardStatus, error) {
 		ShieldMatrixVersion:  shieldMatrixVersion,
 		ShieldMatrixSuccess:  shieldMatrixSuccess,
 		LastUpdate:           lastUpdateStr,
+		ActiveComponents:     activeComponents,
+		SuccessfulComponents: successfulComponents,
+		HealthPercentage:     healthPercentage,
 	}, nil
 }
 
