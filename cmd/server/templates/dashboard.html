@@ -386,7 +386,7 @@
                 <small class="text-muted">License</small>
                 <div class="text-break small">
                   {{if not .Config.LicenseNumber}}
-                  <span class="text-warning"><i class="bi bi-exclamation-triangle"></i> Not configured</span>
+                  <span class="text-warning"><i class="bi bi-exclamation-triangle"></i> Not configured - <a href="/settings">Configure</a></span>
                   {{else}}
                   {{.Config.LicenseNumber}}
                   {{end}}
