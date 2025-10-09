@@ -1,12 +1,14 @@
 package mirror
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"kerio-mirror-go/config"
 	"kerio-mirror-go/utils"
@@ -109,11 +111,12 @@ func BitdefenderProxyHandler(cfg *config.Config, logger *logrus.Logger) echo.Han
 		}
 		// Убираем двойные слеши при конкатенации URL
 		baseURL = strings.TrimSuffix(baseURL, "/")
-		remoteURL := baseURL + requestPath
+		cleanPath := strings.TrimPrefix(requestPath, "/")
+		remoteURL := baseURL + "/" + cleanPath
 		logger.Infof("Bitdefender proxy: fetching from remote: %s (using proxy: %s)", remoteURL, cfg.ProxyURL)
 
-		// Создаём HTTP клиент с поддержкой прокси
-		client, err := utils.CreateHTTPClient(cfg.ProxyURL)
+		// Создаём HTTP клиент с поддержкой прокси и увеличенным timeout для больших файлов
+		client, err := utils.CreateHTTPClient(cfg.ProxyURL, 300*time.Second)
 		if err != nil {
 			logger.Errorf("Bitdefender proxy: failed to create HTTP client: %v", err)
 			return c.String(http.StatusInternalServerError, "500 Internal Server Error")
@@ -123,19 +126,48 @@ func BitdefenderProxyHandler(cfg *config.Config, logger *logrus.Logger) echo.Han
 			logger.Debugf("Bitdefender proxy: using HTTP proxy: %s", cfg.ProxyURL)
 		}
 
-		// Выполняем запрос к удалённому серверу
-		resp, err := client.Get(remoteURL)
-		if err != nil {
-			logger.Errorf("Bitdefender proxy: failed to fetch from remote: %v", err)
+		// Выполняем запрос к удалённому серверу с повторными попытками
+		var resp *http.Response
+		var lastErr error
+		retries := cfg.RetryCount
+		if retries < 1 {
+			retries = 3 // минимум 1 попытка + 2 повторные
+		}
+		retryDelay := time.Duration(cfg.RetryDelaySeconds) * time.Second
+		if retryDelay == 0 {
+			retryDelay = 10 * time.Second
+		}
+
+		for attempt := 0; attempt <= retries; attempt++ {
+			if attempt > 0 {
+				logger.Infof("Bitdefender proxy: retry attempt %d/%d after %v", attempt, retries, retryDelay)
+				time.Sleep(retryDelay)
+			}
+
+			resp, err = client.Get(remoteURL)
+			if err == nil && resp.StatusCode == http.StatusOK {
+				break // Успешный запрос
+			}
+
+			// Сохраняем последнюю ошибку
+			lastErr = err
+			if resp != nil {
+				if resp.StatusCode != http.StatusOK {
+					lastErr = fmt.Errorf("server returned status %d", resp.StatusCode)
+				}
+				resp.Body.Close()
+				resp = nil
+			}
+
+			logger.Warnf("Bitdefender proxy: attempt %d failed: %v", attempt+1, lastErr)
+		}
+
+		// Если все попытки провалились
+		if resp == nil || lastErr != nil {
+			logger.Errorf("Bitdefender proxy: all attempts failed, last error: %v", lastErr)
 			return c.String(http.StatusBadGateway, "502 Bad Gateway")
 		}
 		defer resp.Body.Close()
-
-		// Проверяем статус ответа
-		if resp.StatusCode != http.StatusOK {
-			logger.Warnf("Bitdefender proxy: remote server returned status %d for %s", resp.StatusCode, remoteURL)
-			return c.String(resp.StatusCode, http.StatusText(resp.StatusCode))
-		}
 
 		// Если файл не должен кэшироваться, просто проксируем его клиенту
 		if !cacheable {

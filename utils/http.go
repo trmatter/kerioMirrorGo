@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-// CreateHTTPClient создаёт HTTP клиент с поддержкой прокси
-func CreateHTTPClient(proxyURL string) (*http.Client, error) {
+// CreateHTTPClient создаёт HTTP клиент с поддержкой прокси и настраиваемым timeout
+func CreateHTTPClient(proxyURL string, timeout time.Duration) (*http.Client, error) {
 	transport := &http.Transport{}
 	if proxyURL != "" {
 		proxyParsed, err := url.Parse(proxyURL)
@@ -17,8 +17,12 @@ func CreateHTTPClient(proxyURL string) (*http.Client, error) {
 		}
 		transport.Proxy = http.ProxyURL(proxyParsed)
 	}
+	// Если timeout не указан, используем значение по умолчанию 5 минут
+	if timeout == 0 {
+		timeout = 300 * time.Second
+	}
 	return &http.Client{
-		Timeout:   60 * time.Second,
+		Timeout:   timeout,
 		Transport: transport,
 	}, nil
 }

@@ -8,7 +8,7 @@ import (
 )
 
 func TestCreateHTTPClient_WithoutProxy(t *testing.T) {
-	client, err := CreateHTTPClient("")
+	client, err := CreateHTTPClient("", 60*time.Second)
 	if err != nil {
 		t.Fatalf("CreateHTTPClient failed: %v", err)
 	}
@@ -24,7 +24,7 @@ func TestCreateHTTPClient_WithoutProxy(t *testing.T) {
 
 func TestCreateHTTPClient_WithProxy(t *testing.T) {
 	proxyURL := "http://proxy.example.com:8080"
-	client, err := CreateHTTPClient(proxyURL)
+	client, err := CreateHTTPClient(proxyURL, 60*time.Second)
 	if err != nil {
 		t.Fatalf("CreateHTTPClient with proxy failed: %v", err)
 	}
@@ -45,7 +45,7 @@ func TestCreateHTTPClient_WithProxy(t *testing.T) {
 
 func TestCreateHTTPClient_InvalidProxy(t *testing.T) {
 	proxyURL := "://invalid-url"
-	_, err := CreateHTTPClient(proxyURL)
+	_, err := CreateHTTPClient(proxyURL, 60*time.Second)
 	if err == nil {
 		t.Error("Expected error for invalid proxy URL")
 	}
@@ -121,7 +121,7 @@ func TestHTTPGetWithRetry_InvalidURL(t *testing.T) {
 
 func BenchmarkCreateHTTPClient(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		CreateHTTPClient("")
+		CreateHTTPClient("", 60*time.Second)
 	}
 }
 
