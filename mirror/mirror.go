@@ -35,8 +35,16 @@ func Update(cfg *config.Config, logger *logrus.Logger) {
 	// Загрузка баз Bitdefender
 	if cfg.BitdefenderMode == "mirror" {
 		downloadAndStoreBitdefender(conn, cfg.BitdefenderURLs, "mirror/bitdefender", cfg, logger)
+	} else if cfg.BitdefenderMode == "proxy" {
+		// В proxy mode выполняем только очистку старых версий
+		currentVersion := db.GetBitdefenderVersion(conn)
+		if currentVersion > 0 {
+			cleanupOldBitdefenderVersions("mirror/bitdefender", currentVersion, cfg.BitdefenderKeepVersions, logger)
+		} else {
+			logger.Info("Bitdefender proxy mode: no current version in DB, skipping cleanup")
+		}
 	} else {
-		logger.Infof("Bitdefender mirror mode is disabled by config (current mode: %s).", cfg.BitdefenderMode)
+		logger.Infof("Bitdefender is disabled by config (current mode: %s).", cfg.BitdefenderMode)
 	}
 
 	// Загрузка Shield Matrix

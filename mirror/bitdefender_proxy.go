@@ -1,6 +1,7 @@
 package mirror
 
 import (
+	"database/sql"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"kerio-mirror-go/config"
+	"kerio-mirror-go/db"
 	"kerio-mirror-go/utils"
 
 	"github.com/labstack/echo/v4"
@@ -233,6 +235,56 @@ func BitdefenderProxyHandler(cfg *config.Config, logger *logrus.Logger) echo.Han
 		}
 
 		logger.Infof("Bitdefender proxy: cached file: %s", localPath)
+
+		// Если закэшировали файл versions.dat для новой версии, обновляем версию в БД
+		updateVersionFromCachedFile(requestPath, logger, cfg)
+
 		return nil
+	}
+}
+
+// updateVersionFromCachedFile обновляет версию Bitdefender в БД при кэшировании файла versions.dat
+func updateVersionFromCachedFile(requestPath string, logger *logrus.Logger, cfg *config.Config) {
+	// Проверяем, является ли это файлом versions.dat для новой версии
+	// Путь имеет вид: /av64bit_95576/versions.dat
+	if !strings.Contains(requestPath, "/versions.dat") || !strings.Contains(requestPath, "av64bit_") {
+		return
+	}
+
+	// Извлекаем версию из пути
+	parts := strings.Split(requestPath, "/")
+	var versionStr string
+	for _, part := range parts {
+		if strings.HasPrefix(part, "av64bit_") {
+			versionStr = strings.TrimPrefix(part, "av64bit_")
+			break
+		}
+	}
+
+	if versionStr == "" {
+		return
+	}
+
+	newVersion := utils.AtoiSafe(versionStr)
+	if newVersion == 0 {
+		return
+	}
+
+	// Открываем БД и обновляем версию
+	conn, err := sql.Open("sqlite", cfg.DatabasePath)
+	if err != nil {
+		logger.Errorf("Bitdefender proxy: failed to open DB for version update: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	currentVersion := db.GetBitdefenderVersion(conn)
+	if newVersion > currentVersion {
+		err = db.UpdateBitdefenderVersion(conn, newVersion, true, time.Now())
+		if err != nil {
+			logger.Errorf("Bitdefender proxy: failed to update version in DB: %v", err)
+		} else {
+			logger.Infof("Bitdefender proxy: updated version in DB to %d", newVersion)
+		}
 	}
 }

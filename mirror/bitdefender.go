@@ -55,6 +55,10 @@ func downloadAndStoreBitdefender(conn *sql.DB, urls []string, destDir string, cf
 		return
 	}
 	logger.Infof("bitdefender: update complete, version %d", newVersion)
+
+	// Очистка старых версий
+	cleanupOldBitdefenderVersions(destDir, newVersion, cfg.BitdefenderKeepVersions, logger)
+
 	logger.Info(urls)
 }
 
@@ -303,6 +307,95 @@ func replaceBitdefenderDirs(destDir, tmpDir string, logger *logrus.Logger) bool 
 	}
 	os.RemoveAll(destDir + "_bak")
 	return true
+}
+
+// versionDir представляет директорию с версией Bitdefender
+type versionDir struct {
+	name    string
+	version int
+}
+
+// cleanupOldBitdefenderVersions удаляет старые версии Bitdefender, оставляя только указанное количество последних версий
+func cleanupOldBitdefenderVersions(destDir string, currentVersion int, keepVersions int, logger *logrus.Logger) {
+	if keepVersions < 1 {
+		keepVersions = 1
+	}
+
+	logger.Infof("bitdefender: starting cleanup, current version: %d, keep versions: %d", currentVersion, keepVersions)
+
+	// Сканируем директорию Bitdefender
+	entries, err := os.ReadDir(destDir)
+	if err != nil {
+		logger.Errorf("bitdefender: failed to read directory %s for cleanup: %v", destDir, err)
+		return
+	}
+
+	// Собираем версии для av64bit_* папок
+	var av64bitDirs []versionDir
+	var thinSdkDirs []versionDir
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+
+		// Проверяем av64bit_* папки
+		if strings.HasPrefix(name, "av64bit_") {
+			versionStr := strings.TrimPrefix(name, "av64bit_")
+			version := utils.AtoiSafe(versionStr)
+			if version > 0 {
+				av64bitDirs = append(av64bitDirs, versionDir{name: name, version: version})
+			}
+		}
+
+		// Проверяем as-thin-sdk-win-x86_64_* папки
+		if strings.HasPrefix(name, "as-thin-sdk-win-x86_64_") {
+			versionStr := strings.TrimPrefix(name, "as-thin-sdk-win-x86_64_")
+			version := utils.AtoiSafe(versionStr)
+			if version > 0 {
+				thinSdkDirs = append(thinSdkDirs, versionDir{name: name, version: version})
+			}
+		}
+	}
+
+	// Удаляем старые av64bit_* версии
+	cleanupVersionDirs(destDir, av64bitDirs, currentVersion, keepVersions, logger, "av64bit")
+
+	// Для thin-sdk используем ту же текущую версию (они синхронизированы)
+	cleanupVersionDirs(destDir, thinSdkDirs, currentVersion, keepVersions, logger, "as-thin-sdk-win-x86_64")
+}
+
+// cleanupVersionDirs удаляет старые версии из списка директорий
+func cleanupVersionDirs(destDir string, dirs []versionDir, currentVersion int, keepVersions int, logger *logrus.Logger, prefix string) {
+	if len(dirs) <= keepVersions {
+		logger.Infof("bitdefender: %s cleanup: found %d directories, keeping %d, nothing to delete", prefix, len(dirs), keepVersions)
+		return
+	}
+
+	// Сортируем по версии (от новой к старой)
+	for i := 0; i < len(dirs); i++ {
+		for j := i + 1; j < len(dirs); j++ {
+			if dirs[i].version < dirs[j].version {
+				dirs[i], dirs[j] = dirs[j], dirs[i]
+			}
+		}
+	}
+
+	// Удаляем все версии кроме keepVersions последних
+	deletedCount := 0
+	for i := keepVersions; i < len(dirs); i++ {
+		dirPath := filepath.Join(destDir, dirs[i].name)
+		if err := os.RemoveAll(dirPath); err != nil {
+			logger.Errorf("bitdefender: failed to remove old directory %s: %v", dirs[i].name, err)
+		} else {
+			logger.Infof("bitdefender: removed old directory %s (version %d)", dirs[i].name, dirs[i].version)
+			deletedCount++
+		}
+	}
+
+	logger.Infof("bitdefender: %s cleanup complete: deleted %d old directories, kept %d", prefix, deletedCount, keepVersions)
 }
 
 type V3 struct {

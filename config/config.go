@@ -38,6 +38,7 @@ type Config struct {
 	ShieldMatrixClientID     string   // Client ID для Shield Matrix (по умолчанию "control")
 	ShieldMatrixVersion      string   // Версия Kerio Control для Shield Matrix (например, "9.5.0")
 	ShieldMatrixPreloadFiles bool     // Предзагружать все файлы Shield Matrix по расписанию
+	BitdefenderKeepVersions  int      // Количество сохраняемых версий Bitdefender (по умолчанию 1)
 	AllowedIPs               []string // Разрешенные IP адреса (whitelist)
 	BlockedIPs               []string // Заблокированные IP адреса (blacklist)
 }
@@ -82,6 +83,7 @@ func Load(path string) (*Config, error) {
 	viper.SetDefault("SHIELD_MATRIX_CLIENT_ID", "control")
 	viper.SetDefault("SHIELD_MATRIX_VERSION", "9.5.0")
 	viper.SetDefault("SHIELD_MATRIX_PRELOAD_FILES", false)
+	viper.SetDefault("BITDEFENDER_KEEP_VERSIONS", 1)
 	viper.SetDefault("ALLOWED_IPS", []string{})
 	viper.SetDefault("BLOCKED_IPS", []string{})
 
@@ -119,6 +121,7 @@ func Load(path string) (*Config, error) {
 		ShieldMatrixClientID:     viper.GetString("SHIELD_MATRIX_CLIENT_ID"),
 		ShieldMatrixVersion:      viper.GetString("SHIELD_MATRIX_VERSION"),
 		ShieldMatrixPreloadFiles: viper.GetBool("SHIELD_MATRIX_PRELOAD_FILES"),
+		BitdefenderKeepVersions:  viper.GetInt("BITDEFENDER_KEEP_VERSIONS"),
 		AllowedIPs:               viper.GetStringSlice("ALLOWED_IPS"),
 		BlockedIPs:               viper.GetStringSlice("BLOCKED_IPS"),
 	}, nil
@@ -154,6 +157,7 @@ func Save(cfg *Config, path string) error {
 	viper.Set("SHIELD_MATRIX_CLIENT_ID", cfg.ShieldMatrixClientID)
 	viper.Set("SHIELD_MATRIX_VERSION", cfg.ShieldMatrixVersion)
 	viper.Set("SHIELD_MATRIX_PRELOAD_FILES", cfg.ShieldMatrixPreloadFiles)
+	viper.Set("BITDEFENDER_KEEP_VERSIONS", cfg.BitdefenderKeepVersions)
 	viper.Set("ALLOWED_IPS", cfg.AllowedIPs)
 	viper.Set("BLOCKED_IPS", cfg.BlockedIPs)
 
