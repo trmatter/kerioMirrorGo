@@ -29,11 +29,22 @@ func downloadAndStoreBitdefender(conn *sql.DB, urls []string, destDir string, cf
 		return
 	}
 	currentVersion := db.GetBitdefenderVersion(conn)
-	if currentVersion >= newVersion {
+
+	// Проверяем статус последнего обновления
+	lastSuccess, _, statusErr := db.GetBitdefenderUpdateStatus(conn)
+
+	// Если версия совпадает И последнее обновление было успешным - пропускаем
+	if currentVersion >= newVersion && (statusErr != nil || lastSuccess) {
 		logger.Infof("bitdefender: no new version, current: %d, remote: %d", currentVersion, newVersion)
 		return
 	}
-	logger.Infof("bitdefender: new version detected: %d", newVersion)
+
+	// Если версия совпадает, но последнее обновление было неудачным - попробуем снова
+	if currentVersion >= newVersion && !lastSuccess {
+		logger.Warnf("bitdefender: version %d already in DB but last update failed, retrying", currentVersion)
+	} else {
+		logger.Infof("bitdefender: new version detected: %d", newVersion)
+	}
 
 	downloadBitdefenderMetaFiles(tmpDir, newVersion, cfg, logger)
 	handleThinSdkFiles(tmpDir, cfg, logger)
