@@ -155,39 +155,39 @@
           <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" id="EnableIDS1" name="EnableIDS1" value="true" {{if .Config.EnableIDS1}}checked{{end}}>
             <label class="form-check-label" for="EnableIDS1">Enable IDS 1</label>
-            <div class="form-text">IDSv1 — IPS/IDS Snort (Windows версия)</div>
+            <div class="form-text">IDSv1 — IPS/IDS Snort (Windows version)</div>
           </div>
           <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" id="EnableIDS2" name="EnableIDS2" value="true" {{if .Config.EnableIDS2}}checked{{end}}>
             <label class="form-check-label" for="EnableIDS2">Enable IDS 2</label>
-            <div class="form-text">IDSv2 — Списки скомпрометированных адресов для блокировки</div>
+            <div class="form-text">IDSv2 — Lists of compromised addresses for blocking</div>
           </div>
           <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" id="EnableIDS3" name="EnableIDS3" value="true" {{if .Config.EnableIDS3}}checked{{end}}>
             <label class="form-check-label" for="EnableIDS3">Enable IDS 3</label>
-            <div class="form-text">IDSv3 — IPS/IDS Snort (версия для Linux до 9.5)</div>
+            <div class="form-text">IDSv3 — IPS/IDS Snort (Linux version before 9.5)</div>
           </div>
           <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" id="EnableIDS4" name="EnableIDS4" value="true" {{if .Config.EnableIDS4}}checked{{end}}>
             <label class="form-check-label" for="EnableIDS4">Enable IDS 4</label>
-            <div class="form-text">IDSv4 — Базы данных GeoIP для геолокации/блокировки посетителей</div>
+            <div class="form-text">IDSv4 — GeoIP databases for geolocation/blocking visitors</div>
           </div>
           <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" id="EnableIDS5" name="EnableIDS5" value="true" {{if .Config.EnableIDS5}}checked{{end}}>
             <label class="form-check-label" for="EnableIDS5">Enable IDS 5</label>
-            <div class="form-text">IDSv5 — IPS/IDS Snort (версия для Linux начиная с 9.5)</div>
+            <div class="form-text">IDSv5 — IPS/IDS Snort (Linux version 9.5 and above)</div>
           </div>
           <div class="form-check mb-2 ms-4">
             <input class="form-check-input" type="checkbox" id="EnableSnortTemplate" name="EnableSnortTemplate" value="true" {{if .Config.EnableSnortTemplate}}checked{{end}}>
             <label class="form-check-label" for="EnableSnortTemplate">
-              <i class="bi bi-arrow-return-right"></i> Enable Snort Template (для IDS5)
+              <i class="bi bi-arrow-return-right"></i> Enable Snort Template (for IDS5)
             </label>
-            <div class="form-text">Обновление шаблона Snort для IPS в Kerio Control 9.5 (загружается автоматически вместе с IDS5)</div>
+            <div class="form-text">Snort template update for IPS in Kerio Control 9.5 (downloaded automatically with IDS5)</div>
           </div>
           <div class="mb-3 ms-4">
             <label class="form-label">Snort Template URL</label>
             <input type="text" class="form-control" name="SnortTemplateURL" value="{{.Config.SnortTemplateURL}}" placeholder="http://download.kerio.com/control-update/config/v1/snort.tpl">
-            <div class="form-text">URL для загрузки шаблона snort.tpl (используется при обновлении IDS5)</div>
+            <div class="form-text">URL to download snort.tpl template (used when updating IDS5)</div>
           </div>
         </div>
 
@@ -201,7 +201,7 @@
           <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" id="ShieldMatrixPreloadFiles" name="ShieldMatrixPreloadFiles" value="true" {{if .Config.ShieldMatrixPreloadFiles}}checked{{end}}>
             <label class="form-check-label" for="ShieldMatrixPreloadFiles">Preload Shield Matrix Files</label>
-            <div class="form-text">Предзагружать все файлы Shield Matrix по расписанию (вместо загрузки по запросу)</div>
+            <div class="form-text">Preload all Shield Matrix files on schedule (instead of on-demand download)</div>
           </div>
           <div class="mb-3">
             <label class="form-label">Shield Matrix Base URL</label>
@@ -211,12 +211,12 @@
           <div class="mb-3">
             <label class="form-label">Shield Matrix Client ID</label>
             <input type="text" class="form-control" name="ShieldMatrixClientID" value="{{.Config.ShieldMatrixClientID}}" placeholder="control">
-            <div class="form-text">Client ID for Shield Matrix requests (например "control")</div>
+            <div class="form-text">Client ID for Shield Matrix requests (e.g., "control")</div>
           </div>
           <div class="mb-3">
             <label class="form-label">Shield Matrix Version</label>
             <input type="text" class="form-control" name="ShieldMatrixVersion" value="{{.Config.ShieldMatrixVersion}}" placeholder="9.5.0">
-            <div class="form-text">Версия Kerio для Shield Matrix (например, "9.5.0")</div>
+            <div class="form-text">Kerio version for Shield Matrix (e.g., "9.5.0")</div>
           </div>
         </div>
 

@@ -26,28 +26,28 @@
       <h1 class="card-title mb-4">Server Logs</h1>
       <div class="row mb-3">
         <div class="col-md-6 mb-2 mb-md-0">
-          <input id="log-search" type="text" class="form-control" placeholder="Поиск по логам...">
+          <input id="log-search" type="text" class="form-control" placeholder="Search logs...">
         </div>
         <div class="col-md-4 mb-2 mb-md-0">
           <select id="log-level-filter" class="form-select">
-            <option value="">Все уровни</option>
+            <option value="">All levels</option>
             <option value="INFO">INFO</option>
             <option value="WARN">WARN</option>
             <option value="ERROR">ERROR</option>
           </select>
         </div>
         <div class="col-md-2 d-flex gap-2">
-          <button id="copy-logs" class="btn btn-outline-secondary" title="Скопировать всё"><span class="bi bi-clipboard"></span></button>
-          <button id="download-logs" class="btn btn-outline-secondary" title="Скачать логи"><span class="bi bi-download"></span></button>
+          <button id="copy-logs" class="btn btn-outline-secondary" title="Copy all"><span class="bi bi-clipboard"></span></button>
+          <button id="download-logs" class="btn btn-outline-secondary" title="Download logs"><span class="bi bi-download"></span></button>
         </div>
       </div>
-      <div class="log-area mb-4 position-relative"><span id="loading-indicator" style="display:none;position:absolute;top:10px;right:20px;"><span class="spinner-border spinner-border-sm"></span> Загрузка...</span><pre id="log-content">{{.LogContent}}</pre></div>
+      <div class="log-area mb-4 position-relative"><span id="loading-indicator" style="display:none;position:absolute;top:10px;right:20px;"><span class="spinner-border spinner-border-sm"></span> Loading...</span><pre id="log-content">{{.LogContent}}</pre></div>
       <div class="d-flex justify-content-between align-items-center mb-2">
         <small id="last-updated" class="text-muted"></small>
         <div>
-          <a href="/" class="btn btn-primary me-2"><span class="bi bi-arrow-left"></span> Назад</a>
-          <button id="toggle-autoscroll" class="btn btn-secondary me-2" title="Автопрокрутка"><span class="bi bi-arrow-down-circle"></span> <span id="autoscroll-label">Отключить автопрокрутку</span></button>
-          <button id="toggle-autoupdate" class="btn btn-secondary" title="Автообновление"><span class="bi bi-arrow-repeat"></span> <span id="autoupdate-label">Отключить автообновление</span></button>
+          <a href="/" class="btn btn-primary me-2"><span class="bi bi-arrow-left"></span> Back</a>
+          <button id="toggle-autoscroll" class="btn btn-secondary me-2" title="Auto-scroll"><span class="bi bi-arrow-down-circle"></span> <span id="autoscroll-label">Disable auto-scroll</span></button>
+          <button id="toggle-autoupdate" class="btn btn-secondary" title="Auto-update"><span class="bi bi-arrow-repeat"></span> <span id="autoupdate-label">Disable auto-update</span></button>
         </div>
       </div>
     </div>
@@ -89,7 +89,7 @@ function filterAndRenderLogs() {
     return true;
   });
   if (lines.length === 0) {
-    logContent.innerHTML = '<span class="text-muted">Нет подходящих логов</span>';
+    logContent.innerHTML = '<span class="text-muted">No matching logs</span>';
   } else {
     logContent.innerHTML = lines.map(highlightLogLine).join('\n');
   }
@@ -105,7 +105,7 @@ function fetchLogs() {
     .then(data => {
       rawLogData = data;
       filterAndRenderLogs();
-      lastUpdated.textContent = 'Обновлено: ' + new Date().toLocaleTimeString();
+      lastUpdated.textContent = 'Updated: ' + new Date().toLocaleTimeString();
     })
     .finally(() => {
       loadingIndicator.style.display = 'none';
@@ -115,20 +115,20 @@ function fetchLogs() {
 toggleScrollButton.addEventListener('click', () => {
   isAutoScrolling = !isAutoScrolling;
   if (isAutoScrolling) {
-    autoscrollLabel.textContent = 'Отключить автопрокрутку';
+    autoscrollLabel.textContent = 'Disable auto-scroll';
     logArea.scrollTop = logArea.scrollHeight;
   } else {
-    autoscrollLabel.textContent = 'Включить автопрокрутку';
+    autoscrollLabel.textContent = 'Enable auto-scroll';
   }
 });
 
 toggleUpdateButton.addEventListener('click', () => {
   isAutoUpdating = !isAutoUpdating;
   if (isAutoUpdating) {
-    autoupdateLabel.textContent = 'Отключить автообновление';
+    autoupdateLabel.textContent = 'Disable auto-update';
     fetchLogs();
   } else {
-    autoupdateLabel.textContent = 'Включить автообновление';
+    autoupdateLabel.textContent = 'Enable auto-update';
   }
 });
 
