@@ -23,6 +23,7 @@ kerio-mirror-go is a Go application designed to mirror definition files used by 
 - 📝 **Snort Template**: IPS template updates for Kerio Control 9.5+
 - 📁 **Custom Files**: Mirror any additional URLs
 - 🔒 **IP Access Control**: Whitelist/blacklist with CIDR support
+- 🌐 **Proxy Support**: HTTP/HTTPS and SOCKS5 proxy for all outbound requests
 
 ## Installation
 
@@ -126,7 +127,7 @@ The application reads its configuration from `config.yaml`. All settings can als
 | `LICENSE_NUMBER` | Kerio Control license for IDS/WebFilter | Required |
 | `DATABASE_PATH` | SQLite database file path | `./mirror.db` |
 | `LOG_PATH` | Log file path | `./logs/mirror.log` |
-| `PROXY_URL` | HTTP proxy for outbound requests | - |
+| `PROXY_URL` | Proxy for outbound requests (HTTP/HTTPS or SOCKS5) | - |
 | `ENABLE_IDS1` - `ENABLE_IDS5` | Enable/disable IDS versions | `true` |
 | `BITDEFENDER_MODE` | Bitdefender mode: `disabled`, `mirror`, or `proxy` | `disabled` |
 | `BITDEFENDER_PROXY_BASE_URL` | Upstream URL for proxy mode | `https://upgrade.bitdefender.com` |
@@ -151,7 +152,7 @@ LICENSE_NUMBER: "your-license-here"
 DATABASE_PATH: ./mirror.db
 LOG_PATH: ./logs/mirror.log
 LOG_LEVEL: info
-PROXY_URL: ""
+PROXY_URL: ""  # HTTP: "http://user:pass@host:3128", SOCKS5: "socks5://user:pass@host:1080"
 
 # IDS Settings
 ENABLE_IDS1: true
@@ -377,6 +378,30 @@ d2akeya8d016xi.cloudfront.net. IN A 192.168.1.100
 
 The version number in the URL (9.5.0) corresponds to the Kerio Control version.
 
+### Proxy Configuration
+
+All outbound HTTP requests (IDS, GeoIP, WebFilter, Bitdefender, Shield Matrix, custom URLs) go through the proxy configured via `PROXY_URL`.
+
+Supported schemes:
+
+| Scheme | Example |
+|--------|---------|
+| HTTP proxy | `http://proxy.host:3128` |
+| HTTP proxy with auth | `http://user:pass@proxy.host:3128` |
+| SOCKS5 | `socks5://proxy.host:1080` |
+| SOCKS5 with auth | `socks5://user:pass@proxy.host:1080` |
+
+```yaml
+# No proxy (default)
+PROXY_URL: ""
+
+# HTTP proxy
+PROXY_URL: "http://proxy.host:3128"
+
+# SOCKS5 proxy
+PROXY_URL: "socks5://proxy.host:1080"
+```
+
 ### IP Access Control
 
 The application supports IP-based access control with both whitelist and blacklist functionality:
@@ -524,6 +549,7 @@ kerioMirrorGo/
 - **Logging**: `github.com/sirupsen/logrus`
 - **Database**: `modernc.org/sqlite` (pure-Go, no CGO)
 - **Configuration**: `github.com/spf13/viper`
+- **Proxy (SOCKS5)**: `golang.org/x/net/proxy`
 
 ### CI/CD
 
