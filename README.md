@@ -24,6 +24,7 @@ kerio-mirror-go is a Go application designed to mirror definition files used by 
 - 📁 **Custom Files**: Mirror any additional URLs
 - 🔒 **IP Access Control**: Whitelist/blacklist with CIDR support
 - 🌐 **Proxy Support**: HTTP/HTTPS and SOCKS5 proxy for all outbound requests
+- 🔔 **Telegram Notifications**: Alerts on errors, update start, and successful completion
 
 ## Installation
 
@@ -143,6 +144,11 @@ The application reads its configuration from `config.yaml`. All settings can als
 | `BLOCKED_IPS` | IP blacklist (CIDR or single IPs) | `[]` |
 | `RETRY_COUNT` | Download retry attempts | `3` |
 | `RETRY_DELAY_SECONDS` | Delay between retries | `10` |
+| `TELEGRAM_BOT_TOKEN` | Telegram Bot API token (from @BotFather) | - |
+| `TELEGRAM_CHAT_ID` | Telegram chat or channel ID | - |
+| `TELEGRAM_NOTIFY_ON_ERROR` | Notify when a component fails to update | `true` |
+| `TELEGRAM_NOTIFY_ON_SUCCESS` | Notify when all components update successfully | `false` |
+| `TELEGRAM_NOTIFY_ON_START` | Notify when a scheduled update begins | `false` |
 
 ### Example Configuration
 
@@ -194,6 +200,13 @@ CUSTOM_DOWNLOAD_URLS:
 # IP Access Control
 ALLOWED_IPS: []  # Whitelist - if set, only these IPs can access the server
 BLOCKED_IPS: []  # Blacklist - these IPs will be blocked (takes priority)
+
+# Telegram Notifications
+TELEGRAM_BOT_TOKEN: ""           # Get from @BotFather
+TELEGRAM_CHAT_ID: ""             # Use @userinfobot to find your chat ID
+TELEGRAM_NOTIFY_ON_ERROR: true   # Alert when any component fails
+TELEGRAM_NOTIFY_ON_SUCCESS: false
+TELEGRAM_NOTIFY_ON_START: false
 
 # Retry Settings
 RETRY_COUNT: 3
@@ -402,6 +415,60 @@ PROXY_URL: "http://proxy.host:3128"
 PROXY_URL: "socks5://proxy.host:1080"
 ```
 
+### Telegram Notifications
+
+The application can send notifications to a Telegram chat or channel for key update events.
+
+**Setup:**
+
+1. Create a bot via [@BotFather](https://t.me/BotFather) and copy the token.
+2. Start a chat with the bot (or add it to a group/channel).
+3. Get your chat ID using [@userinfobot](https://t.me/userinfobot) or [@getidsbot](https://t.me/getidsbot).
+4. Add the token and chat ID to the config (or via the web UI at `/settings`).
+
+**Notification types:**
+
+| Type | Trigger | Config key | Default |
+|------|---------|------------|---------|
+| **Error** | One or more components fail to update | `TELEGRAM_NOTIFY_ON_ERROR` | `true` |
+| **Success** | All active components updated successfully | `TELEGRAM_NOTIFY_ON_SUCCESS` | `false` |
+| **Start** | Scheduled update begins | `TELEGRAM_NOTIFY_ON_START` | `false` |
+
+**Configuration:**
+
+```yaml
+TELEGRAM_BOT_TOKEN: "123456789:AABBccDDeeFFggHH..."
+TELEGRAM_CHAT_ID: "-1001234567890"
+TELEGRAM_NOTIFY_ON_ERROR: true
+TELEGRAM_NOTIFY_ON_SUCCESS: false
+TELEGRAM_NOTIFY_ON_START: false
+```
+
+**Example messages:**
+
+Error notification:
+```
+❌ Kerio Mirror: update finished with errors
+
+Failed: IDS 1, Bitdefender
+Duration: 1m23s
+OK: IDS 2, IDS 3, Shield Matrix
+```
+
+Success notification:
+```
+✅ Kerio Mirror: update completed
+
+OK: IDS 1, IDS 2, IDS 3, Bitdefender, Shield Matrix
+Duration: 45s
+```
+
+**Notes:**
+
+- Telegram notifications respect the `PROXY_URL` setting — all requests go through the configured proxy.
+- Notifications are sent synchronously at the end of each update run; network errors are logged as warnings and do not affect the update process.
+- The summary reflects current component status in the database, covering all enabled components (IDS 1–5, Bitdefender in mirror mode, Shield Matrix).
+
 ### IP Access Control
 
 The application supports IP-based access control with both whitelist and blacklist functionality:
@@ -538,6 +605,8 @@ kerioMirrorGo/
 │   ├── shieldmatrix.go  # Shield Matrix (Kerio 9.5+)
 │   ├── snort.go         # Snort template
 │   └── webfilter.go
+├── telegram/            # Telegram notification client
+│   └── telegram.go
 ├── utils/               # Utilities (HTTP client, file ops)
 ├── templates/           # HTML templates (embedded)
 └── static/              # Static assets (embedded)

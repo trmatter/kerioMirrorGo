@@ -285,6 +285,13 @@ func settingsPageHandler(cfg *config.Config, embeddedFiles embed.FS) echo.Handle
 				}
 			}
 
+			// Telegram notifications
+			cfg.TelegramBotToken = c.FormValue("TelegramBotToken")
+			cfg.TelegramChatID = c.FormValue("TelegramChatID")
+			cfg.TelegramNotifyOnError = c.FormValue("TelegramNotifyOnError") == "true"
+			cfg.TelegramNotifyOnSuccess = c.FormValue("TelegramNotifyOnSuccess") == "true"
+			cfg.TelegramNotifyOnStart = c.FormValue("TelegramNotifyOnStart") == "true"
+
 			msg := "Настройки успешно обновлены!"
 
 			// Get config path from context

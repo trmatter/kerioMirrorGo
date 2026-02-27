@@ -41,6 +41,11 @@ type Config struct {
 	BitdefenderKeepVersions  int      // Количество сохраняемых версий Bitdefender (по умолчанию 1)
 	AllowedIPs               []string // Разрешенные IP адреса (whitelist)
 	BlockedIPs               []string // Заблокированные IP адреса (blacklist)
+	TelegramBotToken         string   // Telegram Bot API token
+	TelegramChatID           string   // Telegram chat ID for notifications
+	TelegramNotifyOnError    bool     // Send notification on component errors
+	TelegramNotifyOnSuccess  bool     // Send notification on successful update
+	TelegramNotifyOnStart    bool     // Send notification when update starts
 }
 
 func Load(path string) (*Config, error) {
@@ -86,6 +91,11 @@ func Load(path string) (*Config, error) {
 	viper.SetDefault("BITDEFENDER_KEEP_VERSIONS", 1)
 	viper.SetDefault("ALLOWED_IPS", []string{})
 	viper.SetDefault("BLOCKED_IPS", []string{})
+	viper.SetDefault("TELEGRAM_BOT_TOKEN", "")
+	viper.SetDefault("TELEGRAM_CHAT_ID", "")
+	viper.SetDefault("TELEGRAM_NOTIFY_ON_ERROR", true)
+	viper.SetDefault("TELEGRAM_NOTIFY_ON_SUCCESS", false)
+	viper.SetDefault("TELEGRAM_NOTIFY_ON_START", false)
 
 	viper.AutomaticEnv()
 	if err := viper.ReadInConfig(); err != nil {
@@ -124,6 +134,11 @@ func Load(path string) (*Config, error) {
 		BitdefenderKeepVersions:  viper.GetInt("BITDEFENDER_KEEP_VERSIONS"),
 		AllowedIPs:               viper.GetStringSlice("ALLOWED_IPS"),
 		BlockedIPs:               viper.GetStringSlice("BLOCKED_IPS"),
+		TelegramBotToken:         viper.GetString("TELEGRAM_BOT_TOKEN"),
+		TelegramChatID:           viper.GetString("TELEGRAM_CHAT_ID"),
+		TelegramNotifyOnError:    viper.GetBool("TELEGRAM_NOTIFY_ON_ERROR"),
+		TelegramNotifyOnSuccess:  viper.GetBool("TELEGRAM_NOTIFY_ON_SUCCESS"),
+		TelegramNotifyOnStart:    viper.GetBool("TELEGRAM_NOTIFY_ON_START"),
 	}, nil
 }
 
@@ -160,6 +175,11 @@ func Save(cfg *Config, path string) error {
 	viper.Set("BITDEFENDER_KEEP_VERSIONS", cfg.BitdefenderKeepVersions)
 	viper.Set("ALLOWED_IPS", cfg.AllowedIPs)
 	viper.Set("BLOCKED_IPS", cfg.BlockedIPs)
+	viper.Set("TELEGRAM_BOT_TOKEN", cfg.TelegramBotToken)
+	viper.Set("TELEGRAM_CHAT_ID", cfg.TelegramChatID)
+	viper.Set("TELEGRAM_NOTIFY_ON_ERROR", cfg.TelegramNotifyOnError)
+	viper.Set("TELEGRAM_NOTIFY_ON_SUCCESS", cfg.TelegramNotifyOnSuccess)
+	viper.Set("TELEGRAM_NOTIFY_ON_START", cfg.TelegramNotifyOnStart)
 
 	// Set config type explicitly if file extension is missing or not supported for writing
 	ext := filepath.Ext(path)
